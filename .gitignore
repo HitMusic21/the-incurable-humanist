@@ -47,5 +47,3 @@ logs
 *.swp
 *.swo
 
-# Ignore embedded repositories
-awesome-ai-agents/

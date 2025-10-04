@@ -47,7 +47,35 @@
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Principle I: Modular Architecture
+- [ ] Feature designed as self-contained module with clear boundaries?
+- [ ] Backend follows domain separation (models/services/API)?
+- [ ] Frontend components are composable and single-responsibility?
+- [ ] Dependencies between modules minimized and explicit?
+
+### Principle II: API-First Design
+- [ ] API contracts defined before implementation?
+- [ ] OpenAPI/contract specifications created?
+- [ ] CORS, auth, error handling patterns identified?
+- [ ] FastAPI automatic docs will be leveraged?
+
+### Principle III: Type Safety & Validation
+- [ ] Pydantic models planned for all data validation?
+- [ ] TypeScript strict mode will be used?
+- [ ] SQLModel selected for database ORM?
+- [ ] Type hints planned throughout codebase?
+
+### Principle IV: Test-Driven Development
+- [ ] Contract tests planned before implementation?
+- [ ] Integration tests mapped to user workflows?
+- [ ] Unit tests identified for business logic?
+- [ ] TDD cycle (Red-Green-Refactor) will be followed?
+
+### Principle V: Clean Code Standards
+- [ ] Python: Black/isort/flake8 configured (100-char)?
+- [ ] React: Functional components + hooks approach?
+- [ ] FastAPI: async/await + dependency injection?
+- [ ] Code will be self-documenting with clear naming?
 
 ## Project Structure
 
@@ -216,4 +244,4 @@ directories captured above]
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*
