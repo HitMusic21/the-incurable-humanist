@@ -2,7 +2,11 @@
 Application configuration settings.
 """
 
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .settings import normalize_database_url
 
 
 class Settings(BaseSettings):
@@ -40,4 +44,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
 
-settings = Settings()
+# Initialize settings and normalize DATABASE_URL for Railway/asyncpg compatibility
+_settings = Settings()
+_settings.DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", _settings.DATABASE_URL))
+
+settings = _settings

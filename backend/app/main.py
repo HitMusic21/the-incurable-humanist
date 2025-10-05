@@ -3,6 +3,7 @@ Main FastAPI application entry point.
 The Incurable Humanist - Personal Publication Platform
 """
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -12,16 +13,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, newsletter
-from app.core.database import init_db
+from app.core.database import db_ping, init_db
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup: Initialize database
+    # Startup: Initialize database with retry logic
+    logger.info("Starting application...")
     await init_db()
+    logger.info("Application startup complete")
     yield
     # Shutdown: cleanup if needed
+    logger.info("Application shutting down...")
 
 
 app = FastAPI(
@@ -54,11 +65,37 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Railway and monitoring."""
+    """
+    Basic health check endpoint (no DB dependency).
+    Used by Railway for liveness checks.
+    """
     return {
         "status": "healthy",
         "service": "The Incurable Humanist API",
         "version": "1.0.0"
+    }
+
+
+@app.get("/ready")
+async def readiness_check():
+    """
+    Readiness check endpoint with database connectivity verification.
+    Used by Railway for readiness checks before routing traffic.
+    """
+    db_healthy = await db_ping()
+
+    if not db_healthy:
+        return {
+            "status": "not_ready",
+            "service": "The Incurable Humanist API",
+            "database": "unreachable"
+        }
+
+    return {
+        "status": "ready",
+        "service": "The Incurable Humanist API",
+        "version": "1.0.0",
+        "database": "connected"
     }
 
 
@@ -69,7 +106,8 @@ async def api_root():
         "message": "The Incurable Humanist API",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "ready": "/ready"
     }
 
 
