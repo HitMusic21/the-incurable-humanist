@@ -3,10 +3,13 @@ Main FastAPI application entry point.
 The Incurable Humanist - Personal Publication Platform
 """
 
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, newsletter
 from app.core.database import init_db
@@ -49,16 +52,38 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-async def root():
-    """Health check endpoint."""
-    return {"message": "The Incurable Humanist API is running"}
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway and monitoring."""
+    return {
+        "status": "healthy",
+        "service": "The Incurable Humanist API",
+        "version": "1.0.0"
+    }
 
 
-# Include routers
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(newsletter.router, prefix="/newsletter", tags=["Newsletter"])
+@app.get("/api")
+async def api_root():
+    """API root endpoint."""
+    return {
+        "message": "The Incurable Humanist API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+
+# Include API routers
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(newsletter.router, prefix="/api/newsletter", tags=["Newsletter"])
 
 # TODO: Include other routers when implemented
-# app.include_router(stories.router, prefix="/stories", tags=["Stories"])
-# app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+# app.include_router(stories.router, prefix="/api/stories", tags=["Stories"])
+# app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+
+# Serve static frontend files (production only)
+# In production, the frontend is built and available in frontend/dist
+frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    # Mount API routes first, then catch-all static files
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="static")

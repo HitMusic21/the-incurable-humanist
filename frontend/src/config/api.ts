@@ -1,8 +1,22 @@
+// Detect environment and set API base URL
+const getApiBaseUrl = () => {
+  // In production, API is served from same domain
+  if (import.meta.env.PROD) {
+    return '';
+  }
+  // In development, use localhost backend
+  return 'http://localhost:8000';
+};
+
 export const API_CONFIG = {
-  baseUrl: "http://localhost:8000",
+  baseUrl: getApiBaseUrl(),
   endpoints: {
     newsletter: {
-      articles: "/newsletter/articles",
+      articles: "/api/newsletter/articles",
+    },
+    auth: {
+      register: "/api/auth/register",
+      login: "/api/auth/login",
     },
   },
 };

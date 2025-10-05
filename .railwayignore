@@ -1,0 +1,74 @@
+# Development files
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist-info/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+backend/venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files (use Railway variables instead)
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Node modules (will be installed during build)
+node_modules/
+frontend/node_modules/
+
+# Test files
+tests/
+backend/tests/
+*.test.py
+pytest.ini
+
+# Documentation (optional - keep if you want docs deployed)
+*.md
+!README.md
+!RAILWAY_DEPLOYMENT.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Misc
+*.log
+logs/
+.cache/
+.specify/
+specs/
+awesome-ai-agents/
+
+# Frontend development
+frontend/src/
+frontend/public/
+frontend/index.html
+frontend/vite.config.ts
+frontend/tsconfig.json
+frontend/postcss.config.js
+frontend/tailwind.config.ts
+frontend/.eslintrc.cjs
+frontend/package.json
+frontend/package-lock.json
+
+# Keep only the built frontend
+!frontend/dist/
