@@ -2,17 +2,43 @@ import Card from "./Card";
 import PillButton from "./PillButton";
 import { useForm, ValidationError } from '@formspree/react';
 import { useEffect, useRef } from 'react';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export default function ContactForm() {
   const [state, handleSubmit] = useForm("xldplgoz");
   const formRef = useRef<HTMLFormElement>(null);
+  const { track, identify, events } = useAnalytics();
 
-  // Reset form after successful submission
+  // Reset form after successful submission and track success
   useEffect(() => {
     if (state.succeeded && formRef.current) {
+      // Get form data for tracking
+      const formData = new FormData(formRef.current);
+      const name = formData.get('name') as string;
+      const email = formData.get('email') as string;
+      const subject = formData.get('subject') as string;
+
+      // Identify user with their email
+      if (email) {
+        identify(email, {
+          name,
+          email,
+          contact_method: 'contact_form',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Track successful form submission
+      track(events.CONTACT_FORM_SUBMIT, {
+        name,
+        email,
+        subject: subject || 'No subject',
+        has_subject: Boolean(subject),
+      });
+
       formRef.current.reset();
     }
-  }, [state.succeeded]);
+  }, [state.succeeded, track, identify, events]);
 
   // If submission succeeded, show success message
   if (state.succeeded) {
@@ -42,7 +68,24 @@ export default function ContactForm() {
     <Card className="p-6 md:p-8">
       <h2 className="font-serif text-[24px] text-ink mb-6">Send a Message</h2>
 
-      <form ref={formRef} onSubmit={handleSubmit}>
+      <form 
+        ref={formRef} 
+        onSubmit={(e) => {
+          // Track form submission attempt
+          track(events.CONTACT_FORM_SUBMIT, {
+            form_started: true,
+          });
+          
+          // Track errors if form fails validation
+          if (state.errors && state.errors.length > 0) {
+            track(events.CONTACT_FORM_ERROR, {
+              errors: state.errors.map(error => error.message),
+            });
+          }
+          
+          handleSubmit(e);
+        }}
+      >
         <div className="mb-6">
           <label htmlFor="contact-name" className="block text-[15px] font-medium mb-2">
             Name <span className="text-accent">*</span>

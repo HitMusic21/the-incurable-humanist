@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import SocialIconButton from "./SocialIconButton";
 import { SITE } from "@/config/site";
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export default function Footer() {
+  const { track, events } = useAnalytics();
   return (
     <footer className="border-t border-line/60 bg-surface/50">
       <div className="container py-16 md:py-20">
@@ -65,6 +67,7 @@ export default function Footer() {
             </div>
             <Link
               to="/newsletter"
+              onClick={() => track(events.NEWSLETTER_SIGNUP, { source: 'footer_link' })}
               className="text-accent hover:text-accent2 font-semibold transition focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded inline-block"
             >
               Subscribe to Newsletter →

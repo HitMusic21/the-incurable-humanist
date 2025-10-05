@@ -1,8 +1,23 @@
-import { Outlet, NavLink, Link } from "react-router-dom";
+import { Outlet, NavLink, Link, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import Footer from "@/components/Footer";
 import { SITE } from "@/config/site";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export default function App() {
+  const location = useLocation();
+  const { track, events } = useAnalytics();
+
+  // Track page views when location changes
+  useEffect(() => {
+    const pageName = location.pathname === '/' ? 'Home' : 
+      location.pathname.slice(1).charAt(0).toUpperCase() + location.pathname.slice(2);
+    
+    track(events.PAGE_VIEW, {
+      page_path: location.pathname,
+      page_name: pageName,
+    });
+  }, [location, track, events]);
   return (
     <div className="min-h-dvh flex flex-col">
       <a
