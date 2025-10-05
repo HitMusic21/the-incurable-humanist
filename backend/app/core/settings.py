@@ -14,20 +14,21 @@ def normalize_database_url(raw: str | None) -> str:
     - Validates DATABASE_URL is set
     - Converts postgres:// to postgresql://
     - Adds +asyncpg driver if missing
-    - Enforces sslmode=require for Railway Postgres (unless DB_SSLMODE overrides)
+    - Enforces ssl=require for Railway Postgres (asyncpg uses 'ssl', not 'sslmode')
+    - Converts sslmode=require to ssl=require for asyncpg compatibility
 
     Args:
         raw: Raw DATABASE_URL from environment
 
     Returns:
-        Normalized PostgreSQL URL with asyncpg driver and SSL mode
+        Normalized PostgreSQL URL with asyncpg driver and SSL configuration
 
     Raises:
         RuntimeError: If DATABASE_URL is not set
 
     Example:
         >>> normalize_database_url("postgres://user:pass@host:5432/db")
-        "postgresql+asyncpg://user:pass@host:5432/db?sslmode=require"
+        "postgresql+asyncpg://user:pass@host:5432/db?ssl=require"
     """
     if not raw:
         raise RuntimeError("DATABASE_URL is not set")
@@ -43,8 +44,23 @@ def normalize_database_url(raw: str | None) -> str:
     parsed = urlparse(url)
     qs = dict(parse_qsl(parsed.query))
 
-    # Set sslmode (default to 'require' for Railway, allow override via DB_SSLMODE)
-    qs.setdefault("sslmode", os.getenv("DB_SSLMODE", "require"))
+    # Convert sslmode to ssl for asyncpg compatibility
+    # asyncpg uses 'ssl' parameter, not 'sslmode'
+    if "sslmode" in qs:
+        ssl_value = qs.pop("sslmode")
+        # Map common sslmode values to asyncpg ssl parameter
+        if ssl_value in ("require", "verify-ca", "verify-full"):
+            qs["ssl"] = "require"
+        elif ssl_value == "prefer":
+            qs["ssl"] = "prefer"
+        # 'disable' or 'allow' - don't set ssl parameter
+
+    # Set ssl parameter (default to 'require' for Railway, allow override via DB_SSL)
+    # Only set if not already present and sslmode wasn't disable/allow
+    if "ssl" not in qs:
+        ssl_mode = os.getenv("DB_SSL", "require")
+        if ssl_mode != "disable":
+            qs["ssl"] = ssl_mode
 
     # Rebuild query string
     new_query = urlencode(qs)
