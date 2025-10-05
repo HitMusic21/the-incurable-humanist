@@ -29,9 +29,20 @@ app = FastAPI(
 )
 
 # CORS configuration for frontend
+import os
+allowed_origins = [
+    "http://localhost:5173",  # Vite dev server
+    "https://theincurablehumanist.com",
+    "https://www.theincurablehumanist.com",
+]
+# Add Railway frontend URL if deployed
+railway_url = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+if railway_url:
+    allowed_origins.append(f"https://{railway_url}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
