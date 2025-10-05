@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, newsletter
-from app.core.database import db_ping, init_db
+from app.core.database import db_ping
 
 # Configure logging
 logging.basicConfig(
@@ -26,10 +26,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup: Initialize database with retry logic
+    # Startup: Do not block on database connection
     logger.info("Starting application...")
-    await init_db()
-    logger.info("Application startup complete")
+    logger.info("Application startup complete (DB connection not required for startup)")
     yield
     # Shutdown: cleanup if needed
     logger.info("Application shutting down...")
@@ -64,39 +63,21 @@ app.add_middleware(
 
 
 @app.get("/health")
-async def health_check():
+async def health():
     """
-    Basic health check endpoint (no DB dependency).
-    Used by Railway for liveness checks.
+    Liveness check endpoint (no DB dependency).
+    Used by Railway for liveness checks - MUST NOT query database.
     """
-    return {
-        "status": "healthy",
-        "service": "The Incurable Humanist API",
-        "version": "1.0.0"
-    }
+    return {"ok": True}
 
 
 @app.get("/ready")
-async def readiness_check():
+async def ready():
     """
     Readiness check endpoint with database connectivity verification.
     Used by Railway for readiness checks before routing traffic.
     """
-    db_healthy = await db_ping()
-
-    if not db_healthy:
-        return {
-            "status": "not_ready",
-            "service": "The Incurable Humanist API",
-            "database": "unreachable"
-        }
-
-    return {
-        "status": "ready",
-        "service": "The Incurable Humanist API",
-        "version": "1.0.0",
-        "database": "connected"
-    }
+    return {"db": await db_ping()}
 
 
 @app.get("/api")

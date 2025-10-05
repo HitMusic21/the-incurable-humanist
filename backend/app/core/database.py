@@ -78,10 +78,10 @@ async def db_ping() -> bool:
     """
     try:
         async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
+            await conn.exec_driver_sql("SELECT 1")
         return True
     except Exception as e:
-        logger.error(f"Database ping failed: {e}")
+        logger.warning("DB ping failed: %s", e)
         return False
 
 
