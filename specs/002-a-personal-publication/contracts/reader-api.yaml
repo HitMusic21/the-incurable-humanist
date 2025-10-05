@@ -1,0 +1,299 @@
+openapi: 3.0.3
+info:
+  title: The Incurable Humanist - Reader API
+  description: Reader engagement endpoints (comments, bookmarks, progress)
+  version: 1.0.0
+
+paths:
+  /stories/{story_id}/comments:
+    get:
+      summary: Get approved comments for story
+      tags: [Comments]
+      parameters:
+        - in: path
+          name: story_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of approved comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+
+    post:
+      summary: Submit comment (requires auth)
+      tags: [Comments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: story_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  maxLength: 2000
+                parent_id:
+                  type: integer
+                  nullable: true
+                  description: For threaded replies
+      responses:
+        '201':
+          description: Comment submitted (pending moderation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '401':
+          description: Not authenticated
+
+  /bookmarks:
+    get:
+      summary: Get user's bookmarks
+      tags: [Bookmarks]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of bookmarked stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookmarkedStory'
+        '401':
+          description: Not authenticated
+
+    post:
+      summary: Bookmark a story
+      tags: [Bookmarks]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [story_id]
+              properties:
+                story_id:
+                  type: integer
+      responses:
+        '201':
+          description: Story bookmarked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+        '400':
+          description: Already bookmarked
+
+  /bookmarks/{story_id}:
+    delete:
+      summary: Remove bookmark
+      tags: [Bookmarks]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: story_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bookmark removed
+
+  /reading-progress:
+    post:
+      summary: Update reading progress
+      tags: [Progress]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [story_id, progress_percent]
+              properties:
+                story_id:
+                  type: integer
+                progress_percent:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+      responses:
+        '200':
+          description: Progress updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingProgress'
+
+    get:
+      summary: Get reading progress for all stories
+      tags: [Progress]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reading progress list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReadingProgress'
+
+  /newsletter/subscribe:
+    post:
+      summary: Subscribe to newsletter
+      tags: [Newsletter]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [frequency]
+              properties:
+                frequency:
+                  type: string
+                  enum: [daily, weekly, monthly]
+                preferred_themes:
+                  type: array
+                  items:
+                    type: integer
+                  description: Theme IDs
+      responses:
+        '200':
+          description: Subscribed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  /newsletter/unsubscribe:
+    post:
+      summary: Unsubscribe from newsletter
+      tags: [Newsletter]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Unsubscribed successfully
+
+components:
+  schemas:
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        created_at:
+          type: string
+          format: date-time
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            full_name:
+              type: string
+        parent_id:
+          type: integer
+          nullable: true
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+
+    Bookmark:
+      type: object
+      properties:
+        id:
+          type: integer
+        story_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    BookmarkedStory:
+      allOf:
+        - $ref: '#/components/schemas/Bookmark'
+        - type: object
+          properties:
+            story:
+              type: object
+              properties:
+                id:
+                  type: integer
+                title:
+                  type: string
+                excerpt:
+                  type: string
+                themes:
+                  type: array
+                  items:
+                    type: string
+
+    ReadingProgress:
+      type: object
+      properties:
+        story_id:
+          type: integer
+        progress_percent:
+          type: integer
+        last_read_at:
+          type: string
+          format: date-time
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: integer
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        preferred_themes:
+          type: array
+          items:
+            type: integer
+        is_active:
+          type: boolean
+        subscribed_at:
+          type: string
+          format: date-time
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

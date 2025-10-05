@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #fbf8f3;
+  --surface: #faf6ef;
+  --ink: #453f3d;
+  --muted-ink: #6d6764;
+  --accent: #6e5580;
+  --accent-2: #9a7a89;
+  --accent-2-pressed: #8a6d7b;
+  --line: #e8e1d8;
+  --white: #ffffff;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-ink font-sans text-[18px] leading-relaxed antialiased;
+}
+a {
+  @apply text-ink;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

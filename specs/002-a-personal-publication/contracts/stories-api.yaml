@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: The Incurable Humanist - Stories API
+  description: Public story browsing and reading endpoints
+  version: 1.0.0
+
+paths:
+  /stories:
+    get:
+      summary: List published stories
+      tags: [Stories]
+      parameters:
+        - in: query
+          name: theme
+          schema:
+            type: string
+            enum: [grief, migration, art]
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search in title, content, themes, author notes
+      responses:
+        '200':
+          description: List of stories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StoryListItem'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pages:
+                    type: integer
+
+  /stories/{id}:
+    get:
+      summary: Get story by ID
+      tags: [Stories]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Story details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryDetail'
+        '404':
+          description: Story not found or not published
+
+components:
+  schemas:
+    StoryListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        excerpt:
+          type: string
+        cover_image_url:
+          type: string
+          nullable: true
+        themes:
+          type: array
+          items:
+            type: string
+        read_time_minutes:
+          type: integer
+        published_at:
+          type: string
+          format: date-time
+        comment_count:
+          type: integer
+        bookmark_count:
+          type: integer
+
+    StoryDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+          description: HTML content from editor
+        cover_image_url:
+          type: string
+          nullable: true
+        content_warning:
+          type: string
+          nullable: true
+        themes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+        read_time_minutes:
+          type: integer
+        view_count:
+          type: integer
+        published_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        author:
+          type: object
+          properties:
+            full_name:
+              type: string

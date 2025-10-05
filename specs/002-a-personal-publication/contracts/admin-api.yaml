@@ -1,0 +1,305 @@
+openapi: 3.0.3
+info:
+  title: The Incurable Humanist - Admin API
+  description: Author dashboard endpoints (Denise only)
+  version: 1.0.0
+
+paths:
+  /admin/stories:
+    get:
+      summary: List all stories (drafts, published, archived)
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, published, archived]
+      responses:
+        '200':
+          description: List of author's stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminStoryListItem'
+        '403':
+          description: Not authorized (not author)
+
+    post:
+      summary: Create new story draft
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryCreate'
+      responses:
+        '201':
+          description: Story created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStoryDetail'
+        '403':
+          description: Not authorized
+
+  /admin/stories/{id}:
+    put:
+      summary: Update story
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryUpdate'
+      responses:
+        '200':
+          description: Story updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStoryDetail'
+
+    delete:
+      summary: Archive story
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Story archived
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Story archived"
+
+  /admin/stories/{id}/publish:
+    post:
+      summary: Publish story
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Story published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStoryDetail'
+
+  /admin/comments:
+    get:
+      summary: Get moderation queue
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+            default: pending
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommentModeration'
+
+  /admin/comments/{id}/moderate:
+    post:
+      summary: Approve or reject comment
+      tags: [Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [approve, reject]
+      responses:
+        '200':
+          description: Comment moderated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentModeration'
+
+components:
+  schemas:
+    AdminStoryListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, archived]
+        themes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        view_count:
+          type: integer
+        comment_count:
+          type: integer
+
+    AdminStoryDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdminStoryListItem'
+        - type: object
+          properties:
+            content:
+              type: string
+            excerpt:
+              type: string
+              nullable: true
+            cover_image_url:
+              type: string
+              nullable: true
+            author_notes:
+              type: string
+              nullable: true
+            content_warning:
+              type: string
+              nullable: true
+
+    StoryCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        content:
+          type: string
+        excerpt:
+          type: string
+          maxLength: 500
+        cover_image_url:
+          type: string
+        theme_ids:
+          type: array
+          items:
+            type: integer
+        author_notes:
+          type: string
+        content_warning:
+          type: string
+
+    StoryUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        excerpt:
+          type: string
+        cover_image_url:
+          type: string
+        theme_ids:
+          type: array
+          items:
+            type: integer
+        author_notes:
+          type: string
+        content_warning:
+          type: string
+
+    CommentModeration:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        created_at:
+          type: string
+          format: date-time
+        moderated_at:
+          type: string
+          format: date-time
+          nullable: true
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            full_name:
+              type: string
+            email:
+              type: string
+        story:
+          type: object
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
