@@ -68,21 +68,25 @@ export default function ContactForm() {
     <Card className="p-6 md:p-8">
       <h2 className="font-serif text-[24px] text-ink mb-6">Send a Message</h2>
 
-      <form 
-        ref={formRef} 
+      <form
+        ref={formRef}
         onSubmit={(e) => {
           // Track form submission attempt
           track(events.CONTACT_FORM_SUBMIT, {
             form_started: true,
           });
-          
+
           // Track errors if form fails validation
-          if (state.errors && state.errors.length > 0) {
+          if (state.errors && Array.isArray(state.errors) && state.errors.length > 0) {
+            const errorMessages: string[] = state.errors
+              .map((error: any) => error?.message || String(error))
+              .filter((msg: any): msg is string => typeof msg === 'string');
+
             track(events.CONTACT_FORM_ERROR, {
-              errors: state.errors.map(error => error.message),
+              errors: errorMessages,
             });
           }
-          
+
           handleSubmit(e);
         }}
       >

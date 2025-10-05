@@ -1,5 +1,9 @@
 // Detect environment and set API base URL
 const getApiBaseUrl = () => {
+  // Use environment variable if provided
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
   // In production, API is served from same domain
   if (import.meta.env.PROD) {
     return '';
@@ -8,8 +12,10 @@ const getApiBaseUrl = () => {
   return 'http://localhost:8000';
 };
 
+export const API_BASE_URL = getApiBaseUrl();
+
 export const API_CONFIG = {
-  baseUrl: getApiBaseUrl(),
+  baseUrl: API_BASE_URL,
   endpoints: {
     newsletter: {
       articles: "/api/newsletter/articles",
