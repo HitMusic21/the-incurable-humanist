@@ -15,8 +15,13 @@ RUN pip install --upgrade pip && \
 # Copy application code
 COPY backend /app/backend
 
+# Create non-root user
+RUN useradd -m appuser
+USER appuser
+
 WORKDIR /app/backend
 
-EXPOSE 8000
+EXPOSE 8080
 
-CMD ["sh","-c","uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+ENV PORT=8080
+CMD ["sh","-c","uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
