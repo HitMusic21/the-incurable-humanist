@@ -13,6 +13,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SPEAKING_TOPICS } from "../src/data/speakingTopics.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(HERE, "..", "dist");
@@ -27,16 +28,6 @@ const STATIC_ROUTES = [
   { path: "/archive", priority: "0.9", changefreq: "weekly" },
   { path: "/speak", priority: "0.8", changefreq: "monthly" },
   { path: "/listen", priority: "0.7", changefreq: "monthly" },
-];
-
-// Kept in a tiny inline mirror of SITE.speakingTopics so the generator doesn't
-// have to compile TS at build time. If SPEAKING_TOPICS grows/shrinks in
-// site.ts, update here too.
-const SPEAKING_TOPICS = [
-  "grief-and-inheritance",
-  "migration-as-grief",
-  "art-as-lifesaver",
-  "latin-american-art-and-diaspora",
 ];
 
 function xmlEscape(str) {
@@ -79,10 +70,10 @@ function buildSitemap(stories) {
     );
   }
 
-  for (const slug of SPEAKING_TOPICS) {
+  for (const topic of SPEAKING_TOPICS) {
     urls.push(
       `  <url>\n` +
-        `    <loc>${xmlEscape(`${SITE_URL}/speak/${slug}`)}</loc>\n` +
+        `    <loc>${xmlEscape(`${SITE_URL}/speak/${topic.slug}`)}</loc>\n` +
         `    <lastmod>${now}</lastmod>\n` +
         `    <changefreq>monthly</changefreq>\n` +
         `    <priority>0.7</priority>\n` +

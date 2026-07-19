@@ -23,7 +23,7 @@ async def test_database_url_normalization():
     print("TEST 1: DATABASE_URL Normalization")
     print("=" * 70)
 
-    from app.core.settings import normalize_database_url
+    from app.core.db_url import normalize_database_url
 
     test_cases = [
         (

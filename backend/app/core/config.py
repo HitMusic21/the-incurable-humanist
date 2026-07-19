@@ -6,7 +6,7 @@ import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .settings import normalize_database_url
+from .db_url import normalize_database_url
 
 
 class Settings(BaseSettings):

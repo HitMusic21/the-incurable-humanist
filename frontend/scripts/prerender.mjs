@@ -13,6 +13,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+// Speaking topics come from the shared source of truth — the runtime SITE
+// object (React consumers) and this build script now use the same list.
+import { SPEAKING_TOPICS } from "../src/data/speakingTopics.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(HERE, "..", "dist");
@@ -48,33 +51,6 @@ const STATIC_PAGES = [
     title: "Listen — The Incurable Humanist",
     description:
       "Audio essays and playlists from Denise Rodriguez Dao's Incurable Humanist newsletter.",
-  },
-];
-
-const SPEAKING_TOPICS = [
-  {
-    slug: "grief-and-inheritance",
-    title: "Grief and Inheritance",
-    blurb:
-      "A talk on grief as inheritance — the private ledger of what a parent leaves behind, and the ways that loss reshapes the rest of a life.",
-  },
-  {
-    slug: "migration-as-grief",
-    title: "Migration as a Form of Grief",
-    blurb:
-      "Migration reshuffles love, language, and belonging. This talk traces the emotional architecture of leaving.",
-  },
-  {
-    slug: "art-as-lifesaver",
-    title: "Art as the Lifesaver",
-    blurb:
-      "Painting, writing, cooking, music — art in any form is the tool through which we endure loss and transform it into meaning.",
-  },
-  {
-    slug: "latin-american-art-and-diaspora",
-    title: "Latin American Art & the Diaspora",
-    blurb:
-      "A conversation between the gallery and the courtroom: what it takes to represent artists and cultural workers moving between countries.",
   },
 ];
 

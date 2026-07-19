@@ -140,7 +140,7 @@ New API calls should route through `API_CONFIG.endpoints` rather than hard-codin
 
 Design system reference: **`docs/UI_DESIGN_SYSTEM.md`**. Keep it in sync when the site's visual language changes. Chronological UI-fix log: **`frontend/CHANGELOG.md`**.
 
-Product/brand docs live in **`docs/`** (checked in). `.claude/docs/` contains the same brand/PRD files and predates the visible copy — treat `docs/` as canonical and update `.claude/docs/` only if a doc is genuinely Claude-only.
+Product/brand docs live in **`docs/`** (checked in). An earlier `.claude/docs/` mirror was deleted — `docs/` is the single source of truth.
 
 The site's visual identity is a **prospectus / literary journal** treatment. Two conventions are load-bearing and should not be regressed:
 
