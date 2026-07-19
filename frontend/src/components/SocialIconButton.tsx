@@ -1,4 +1,5 @@
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { withUTM } from '@/lib/utm';
 
 type Props = {
   label: string;
@@ -10,17 +11,23 @@ type Props = {
 export default function SocialIconButton({ label, href, children, className = "" }: Props) {
   const { track, events } = useAnalytics();
 
+  const taggedHref = withUTM(href, {
+    source: "website",
+    medium: "referral",
+    content: `social-icon-${label.toLowerCase().replace(/\s+/g, "-")}`,
+  });
+
   const handleClick = () => {
     track(events.SOCIAL_LINK_CLICK, {
       platform: label,
-      url: href,
+      url: taggedHref,
     });
   };
 
   return (
     <a
       aria-label={label}
-      href={href}
+      href={taggedHref}
       onClick={handleClick}
       target="_blank"
       rel="noopener noreferrer"

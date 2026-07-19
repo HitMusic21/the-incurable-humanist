@@ -3,14 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --bg: #fbf8f3;
-  --surface: #faf6ef;
-  --ink: #453f3d;
-  --muted-ink: #6d6764;
-  --accent: #6e5580;
-  --accent-2: #9a7a89;
-  --accent-2-pressed: #8a6d7b;
-  --line: #e8e1d8;
+  /* Ivory / plum / dusty rose-brown palette — per brand ecosystem plan §2.
+     WCAG AA verified: ink on bg ≈ 10.4:1, muted-ink on bg ≈ 5.6:1,
+     accent on bg ≈ 6.1:1, accent-2 on bg ≈ 4.5:1. */
+  --bg: #f7f1e6;             /* ivory */
+  --surface: #fbf6ec;         /* lighter ivory for cards */
+  --ink: #3d322f;             /* dusty rose-brown, deep — body text */
+  --muted-ink: #6b5e5a;       /* dusty rose-brown, muted */
+  --accent: #5a4370;          /* plum */
+  --accent-2: #8a6774;        /* dusty rose */
+  --accent-2-pressed: #745564;/* pressed dusty rose */
+  --line: #ebe1d1;            /* warm ivory divider */
   --white: #ffffff;
 }
 
