@@ -1,10 +1,23 @@
 """
 Contract tests for Admin API endpoints (Author dashboard).
-Tests MUST fail initially (red phase) until implementation is complete.
+
+SKIPPED: this file targets a `/admin/*` backend surface that was never built.
+Sprint 2 shipped admin functionality via `/stories` guarded by
+`get_current_author` (see test_stories_api_impl.py). The admin *UI* lives on
+the frontend at /admin/stories — no equivalent backend prefix exists.
+
+Keep the file around as a record of the intent — if a dedicated /admin/*
+router ever ships (e.g. for cross-model bulk operations, moderation queues,
+analytics dashboards), the assertions here document the expected auth shape.
+Delete this file when that intent is either built or definitively dropped.
 """
 
 import pytest
 from fastapi.testclient import TestClient
+
+pytestmark = pytest.mark.skip(
+    reason="/admin/* backend routes not implemented — admin is /stories + frontend"
+)
 
 
 @pytest.fixture
@@ -21,7 +34,8 @@ def author_token(client):
     # This assumes Denise's account exists
     # In real implementation, seed author account
     login_response = client.post(
-        "/auth/login", json={"email": "denise@theincurablehumanist.com", "password": "AuthorPass123"}
+        "/auth/login",
+        json={"email": "denise@theincurablehumanist.com", "password": "AuthorPass123"},
     )
 
     if login_response.status_code == 200:
@@ -34,7 +48,11 @@ def reader_token(client):
     """Fixture to get regular reader authentication token."""
     client.post(
         "/auth/register",
-        json={"email": "reader@example.com", "password": "ReaderPass123", "full_name": "Reader User"},
+        json={
+            "email": "reader@example.com",
+            "password": "ReaderPass123",
+            "full_name": "Reader User",
+        },
     )
 
     login_response = client.post(

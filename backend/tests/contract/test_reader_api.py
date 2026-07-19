@@ -1,10 +1,23 @@
 """
 Contract tests for Reader API endpoints (engagement features).
-Tests MUST fail initially (red phase) until implementation is complete.
+
+SKIPPED: this file targets reader-engagement endpoints (`/stories/{id}/comments`,
+`/bookmarks`, `/reading-progress`, `/subscriptions`) whose models exist
+(Comment, Bookmark, ReadingProgress, NewsletterSubscription) but no routers
+were ever built. The 4-sprint growth plan explicitly deferred comments to
+Giscus (docs/plan) and treats the other three as future features gated on
+demand from authenticated readers.
+
+Keep the file as a record of the intended contracts — un-skip and delete
+this notice when the corresponding routers ship.
 """
 
 import pytest
 from fastapi.testclient import TestClient
+
+pytestmark = pytest.mark.skip(
+    reason="reader-engagement routers (/comments, /bookmarks, etc.) not implemented"
+)
 
 
 @pytest.fixture
