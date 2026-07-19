@@ -121,6 +121,8 @@ async def init_db() -> None:
                 from app.models import (
                     Bookmark,
                     Comment,
+                    LeadCapture,
+                    LeadEvent,
                     NewsletterSubscription,
                     ReadingProgress,
                     Story,

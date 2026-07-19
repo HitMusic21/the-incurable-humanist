@@ -4,6 +4,8 @@ Database models for The Incurable Humanist platform.
 
 from .bookmark import Bookmark
 from .comment import Comment, CommentStatus
+from .lead_capture import LeadCapture
+from .lead_event import LeadEvent
 from .newsletter import NewsletterFrequency, NewsletterSubscription
 from .reading_progress import ReadingProgress
 from .story import Story, StoryStatus
@@ -22,4 +24,6 @@ __all__ = [
     "NewsletterSubscription",
     "NewsletterFrequency",
     "ReadingProgress",
+    "LeadCapture",
+    "LeadEvent",
 ]
