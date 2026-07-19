@@ -13,7 +13,7 @@ export default function About() {
             The Incurable Humanist
           </h2>
 
-          <div className="space-y-8 text-[17px] md:text-[18px] leading-relaxed max-w-3xl mx-auto">
+          <div className="space-y-8 text-[17px] md:text-[18px] leading-[1.75] max-w-[62ch] mx-auto text-justify hyphens-auto [text-wrap:pretty]">
             <p>
               The Incurable Humanist is a space for grief, migration, and art.
             </p>
@@ -69,7 +69,7 @@ export default function About() {
             />
           </div>
 
-          <div className="max-w-3xl mx-auto space-y-8 text-[17px] md:text-[18px] leading-relaxed">
+          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] text-justify hyphens-auto [text-wrap:pretty]">
             <p>
               Denise Rodriguez Dao writes <em>The Incurable Humanist</em>, a weekly newsletter
               exploring grief, migration, and art.
