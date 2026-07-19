@@ -3,7 +3,6 @@ Pydantic schemas for API request/response validation.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -81,27 +80,27 @@ class StoryCreate(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=500)
     content: str = Field(..., min_length=1)  # Tiptap HTML
-    slug: Optional[str] = Field(default=None, max_length=255)
-    excerpt: Optional[str] = Field(default=None, max_length=500)
-    meta_description: Optional[str] = Field(default=None, max_length=320)
-    cover_image_url: Optional[str] = Field(default=None, max_length=500)
-    canonical_url: Optional[str] = Field(default=None, max_length=500)
-    content_warning: Optional[str] = Field(default=None, max_length=500)
+    slug: str | None = Field(default=None, max_length=255)
+    excerpt: str | None = Field(default=None, max_length=500)
+    meta_description: str | None = Field(default=None, max_length=320)
+    cover_image_url: str | None = Field(default=None, max_length=500)
+    canonical_url: str | None = Field(default=None, max_length=500)
+    content_warning: str | None = Field(default=None, max_length=500)
     status: str = Field(default="draft")  # "draft" | "published" | "archived"
 
 
 class StoryUpdate(BaseModel):
     """Partial update — every field optional."""
 
-    title: Optional[str] = Field(default=None, min_length=1, max_length=500)
-    content: Optional[str] = Field(default=None, min_length=1)
-    slug: Optional[str] = Field(default=None, max_length=255)
-    excerpt: Optional[str] = Field(default=None, max_length=500)
-    meta_description: Optional[str] = Field(default=None, max_length=320)
-    cover_image_url: Optional[str] = Field(default=None, max_length=500)
-    canonical_url: Optional[str] = Field(default=None, max_length=500)
-    content_warning: Optional[str] = Field(default=None, max_length=500)
-    status: Optional[str] = Field(default=None)
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    content: str | None = Field(default=None, min_length=1)
+    slug: str | None = Field(default=None, max_length=255)
+    excerpt: str | None = Field(default=None, max_length=500)
+    meta_description: str | None = Field(default=None, max_length=320)
+    cover_image_url: str | None = Field(default=None, max_length=500)
+    canonical_url: str | None = Field(default=None, max_length=500)
+    content_warning: str | None = Field(default=None, max_length=500)
+    status: str | None = Field(default=None)
 
 
 class StoryPublic(BaseModel):
@@ -110,12 +109,12 @@ class StoryPublic(BaseModel):
     id: int
     title: str
     slug: str
-    excerpt: Optional[str]
-    meta_description: Optional[str]
-    cover_image_url: Optional[str]
-    canonical_url: Optional[str]
+    excerpt: str | None
+    meta_description: str | None
+    cover_image_url: str | None
+    canonical_url: str | None
     status: str
-    published_at: Optional[datetime]
+    published_at: datetime | None
     updated_at: datetime
 
     class Config:
@@ -126,7 +125,7 @@ class StoryDetail(StoryPublic):
     """Full detail — includes body."""
 
     content: str
-    content_warning: Optional[str]
+    content_warning: str | None
     view_count: int
 
 

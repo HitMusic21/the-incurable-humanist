@@ -79,16 +79,15 @@ class TestConfirm:
         """
         import asyncio
 
-        from sqlalchemy import select
-
         from app.core.database import async_session_maker
         from app.models.lead_capture import LeadCapture
+        from sqlalchemy import select
 
         email = unique_email()
-        assert (
-            client.post("/leads/subscribe", json={"email": email, "source": "home-hero"}).status_code
-            == 202
+        subscribe = client.post(
+            "/leads/subscribe", json={"email": email, "source": "home-hero"}
         )
+        assert subscribe.status_code == 202
 
         async def fetch_token() -> str:
             async with async_session_maker() as s:

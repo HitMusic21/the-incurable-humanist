@@ -103,7 +103,7 @@ async def get_newsletter_articles():
         raise HTTPException(
             status_code=503,
             detail=f"Unable to fetch newsletter articles: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/health")

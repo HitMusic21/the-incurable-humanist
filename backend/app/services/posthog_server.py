@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import posthog
 
@@ -38,7 +38,7 @@ def hash_email(email: str) -> str:
     return "email:" + hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()
 
 
-def capture(distinct_id: str, event: str, properties: Optional[dict[str, Any]] = None) -> bool:
+def capture(distinct_id: str, event: str, properties: dict[str, Any] | None = None) -> bool:
     """Fire-and-forget capture. Returns True on enqueue, False on no-op or error."""
     if not _init_once():
         logger.debug("posthog no-op: POSTHOG_API_KEY unset (event=%s)", event)

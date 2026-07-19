@@ -8,7 +8,6 @@ same note in app/api/leads.py for the FastAPI+Pydantic+slowapi rationale.
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -32,7 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _coerce_status(raw: Optional[str]) -> Optional[StoryStatus]:
+def _coerce_status(raw: str | None) -> StoryStatus | None:
     if raw is None:
         return None
     try:
@@ -46,7 +45,7 @@ def _coerce_status(raw: Optional[str]) -> Optional[StoryStatus]:
 
 @router.get("", response_model=StoryListResponse)
 async def list_stories(
-    status_filter: Optional[str] = Query(default="published", alias="status"),
+    status_filter: str | None = Query(default="published", alias="status"),
     # Cap high (500) so the sitemap/RSS generators can pull the full corpus in
     # one request; UI clients still pass smaller limits.
     limit: int = Query(default=20, ge=1, le=500),

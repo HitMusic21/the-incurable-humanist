@@ -20,12 +20,10 @@ from pathlib import Path
 # Allow running as a standalone script: `python backend/scripts/backfill_story_slugs.py`
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import select  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
-
 from app.core.database import async_session_maker  # noqa: E402
 from app.models.story import Story  # noqa: E402
-
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 _SLUG_CLEAN_RE = re.compile(r"[^a-z0-9\s-]")
 _SLUG_HYPHEN_RE = re.compile(r"[\s-]+")

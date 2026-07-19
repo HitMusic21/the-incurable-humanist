@@ -8,7 +8,8 @@ and is stored as `SENDGRID_WEBHOOK_PUBLIC_KEY` (PEM, base64-encoded body only
 between the BEGIN/END markers is what SendGrid displays — we accept either
 form).
 
-Reference: https://docs.sendgrid.com/for-developers/tracking-events/getting-started-event-webhook-security-features
+Reference:
+https://docs.sendgrid.com/for-developers/tracking-events/getting-started-event-webhook-security-features
 """
 
 from __future__ import annotations
@@ -70,5 +71,3 @@ def verify(signature_b64: str | None, timestamp: str | None, raw_body: bytes) ->
     except Exception:
         logger.exception("SendGrid signature verification raised unexpectedly")
         return False
-
-

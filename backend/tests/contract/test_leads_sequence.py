@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-
 TOKEN = "test-scheduler-token"
 
 
@@ -44,10 +43,9 @@ def _rand() -> str:
 async def _seed_confirmed_lead(email: str, next_send_at: datetime) -> int:
     """Insert a confirmed lead with next_send_at in the past so the tick
     picks it up. Returns the id."""
-    from sqlalchemy import select
-
     from app.core.database import async_session_maker
     from app.models.lead_capture import LeadCapture
+    from sqlalchemy import select
 
     async with async_session_maker() as session:
         lead = LeadCapture(
@@ -60,15 +58,14 @@ async def _seed_confirmed_lead(email: str, next_send_at: datetime) -> int:
         )
         session.add(lead)
         await session.commit()
-        row = (await session.execute(select(LeadCapture).where(LeadCapture.email == email))).scalar_one()
-        return row.id
+        result = await session.execute(select(LeadCapture).where(LeadCapture.email == email))
+        return result.scalar_one().id
 
 
 async def _fetch_lead(email: str):
-    from sqlalchemy import select
-
     from app.core.database import async_session_maker
     from app.models.lead_capture import LeadCapture
+    from sqlalchemy import select
 
     async with async_session_maker() as session:
         return (

@@ -13,7 +13,6 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import inspect
 
-
 revision = "0002_story_seo_fields"
 down_revision = "0001_baseline"
 branch_labels = None

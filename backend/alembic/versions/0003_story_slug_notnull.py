@@ -12,7 +12,6 @@ Create Date: 2026-07-19
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "0003_story_slug_notnull"
 down_revision = "0002_story_seo_fields"
 branch_labels = None

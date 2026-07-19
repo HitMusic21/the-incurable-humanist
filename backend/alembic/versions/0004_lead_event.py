@@ -12,7 +12,6 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import inspect
 
-
 revision = "0004_lead_event"
 down_revision = "0003_story_slug_notnull"
 branch_labels = None

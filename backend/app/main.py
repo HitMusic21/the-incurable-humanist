@@ -4,6 +4,7 @@ The Incurable Humanist - Personal Publication Platform
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response, status
@@ -12,7 +13,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api import auth, leads, newsletter, stories
-from app.core.database import init_db, db_ping
+from app.core.database import db_ping, init_db
 
 # Basic logging configuration (can be overridden by server)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -35,8 +36,6 @@ app = FastAPI(
 )
 
 # CORS configuration for frontend
-import os
-
 allowed_origins = [
     "http://localhost:5173",  # Vite dev server
     "https://theincurablehumanist.com",

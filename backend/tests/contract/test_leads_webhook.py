@@ -78,10 +78,9 @@ async def _seed_lead(email: str) -> int:
 
 
 async def _count_events(sg_event_id: str) -> int:
-    from sqlalchemy import func, select
-
     from app.core.database import async_session_maker
     from app.models.lead_event import LeadEvent
+    from sqlalchemy import func, select
 
     async with async_session_maker() as session:
         result = await session.execute(

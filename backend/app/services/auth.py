@@ -2,7 +2,6 @@
 Authentication service for user registration and login.
 """
 
-from datetime import timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -12,7 +11,12 @@ from sqlalchemy.future import select
 
 from app.core.config import settings
 from app.core.database import get_session
-from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    verify_password,
+)
 from app.models import User
 
 security = HTTPBearer()

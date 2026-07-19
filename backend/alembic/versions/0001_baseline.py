@@ -14,9 +14,8 @@ Revises:
 Create Date: 2026-07-19
 """
 
-from alembic import op  # noqa: F401
 import sqlalchemy as sa  # noqa: F401
-
+from alembic import op  # noqa: F401
 
 revision = "0001_baseline"
 down_revision = None

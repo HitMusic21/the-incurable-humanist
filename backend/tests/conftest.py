@@ -21,21 +21,23 @@ at it — the docker-compose host mapping is `localhost:5433` by default.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from collections.abc import AsyncIterator
 
 import pytest
+from app.core.database import get_session as _real_get_session
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
-from app.core.database import get_session as _real_get_session
-
 
 def _async_url() -> str:
     """asyncpg-flavored URL for the app's session dependency."""
-    raw = os.getenv("DATABASE_URL") or "postgresql+asyncpg://postgres:postgres@localhost:5433/tih_db"
+    raw = os.getenv("DATABASE_URL") or (
+        "postgresql+asyncpg://postgres:postgres@localhost:5433/tih_db"
+    )
     if "+asyncpg" not in raw:
         raw = raw.replace("postgresql://", "postgresql+asyncpg://").replace(
             "postgres://", "postgresql+asyncpg://"
@@ -76,11 +78,9 @@ def _clean_db_between_tests():
     try:
         with engine.begin() as conn:
             for table in _TRUNCATE_TABLES:
-                try:
+                # Table may not exist yet on a fresh DB; carry on.
+                with contextlib.suppress(Exception):
                     conn.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
-                except Exception:  # noqa: BLE001
-                    # Table may not exist yet on a fresh DB; carry on.
-                    pass
     finally:
         engine.dispose()
     yield
@@ -107,12 +107,10 @@ def _override_get_session():
     yield
     app.dependency_overrides.pop(_real_get_session, None)
     # Engine dispose is best-effort — the loop it was created on may already
-    # be closed by TestClient teardown. Swallow.
-    try:
+    # be closed by TestClient teardown.
+    with contextlib.suppress(Exception):
         import asyncio
 
         loop = asyncio.new_event_loop()
         loop.run_until_complete(engine.dispose())
         loop.close()
-    except Exception:  # noqa: BLE001
-        pass

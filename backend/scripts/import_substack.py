@@ -26,14 +26,13 @@ from dateutil import parser as date_parser
 # Allow running as a standalone script.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import select  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
-
 from app.core.config import settings  # noqa: E402
 from app.core.database import async_session_maker  # noqa: E402
 from app.models.story import Story, StoryStatus  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.services.slugify import ensure_unique_slug, slugify  # noqa: E402
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)

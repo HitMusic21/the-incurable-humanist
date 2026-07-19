@@ -16,7 +16,6 @@ import json
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
@@ -50,6 +49,7 @@ def _frontend_base() -> str:
         return f"https://{base}"
     return base
 
+
 router = APIRouter()
 
 # Rate limit anonymous signups: 10/hr per IP. slowapi wires into request state.
@@ -65,19 +65,19 @@ SEQUENCE_BATCH_SIZE = 100
 
 
 class UtmPayload(BaseModel):
-    source: Optional[str] = Field(default=None, max_length=64)
-    medium: Optional[str] = Field(default=None, max_length=64)
-    campaign: Optional[str] = Field(default=None, max_length=128)
-    content: Optional[str] = Field(default=None, max_length=128)
-    term: Optional[str] = Field(default=None, max_length=128)
+    source: str | None = Field(default=None, max_length=64)
+    medium: str | None = Field(default=None, max_length=64)
+    campaign: str | None = Field(default=None, max_length=128)
+    content: str | None = Field(default=None, max_length=128)
+    term: str | None = Field(default=None, max_length=128)
 
 
 class SubscribeRequest(BaseModel):
     email: EmailStr
     source: str = Field(max_length=64)
-    utm: Optional[UtmPayload] = None
+    utm: UtmPayload | None = None
     magnet_requested: bool = True
-    referrer_url: Optional[str] = Field(default=None, max_length=500)
+    referrer_url: str | None = Field(default=None, max_length=500)
 
 
 class SubscribeResponse(BaseModel):
@@ -199,7 +199,7 @@ class TickResponse(BaseModel):
     completed: int  # rows that advanced past the last step (sequence done)
 
 
-def _verify_scheduler_token(header_value: Optional[str]) -> None:
+def _verify_scheduler_token(header_value: str | None) -> None:
     """Header-based auth for the tick endpoint. Rejects if SCHEDULER_TOKEN is
     unset (never accept unauth in prod) or if the header doesn't match."""
     expected = settings.SCHEDULER_TOKEN
@@ -212,7 +212,7 @@ def _verify_scheduler_token(header_value: Optional[str]) -> None:
 
 @router.post("/sequence/tick", response_model=TickResponse)
 async def sequence_tick(
-    x_scheduler_token: Optional[str] = Header(default=None, alias="X-Scheduler-Token"),
+    x_scheduler_token: str | None = Header(default=None, alias="X-Scheduler-Token"),
     session: AsyncSession = Depends(get_session),
 ) -> TickResponse:
     """
@@ -303,10 +303,10 @@ class WebhookResponse(BaseModel):
 async def sendgrid_webhook_receiver(
     request: Request,
     session: AsyncSession = Depends(get_session),
-    x_signature: Optional[str] = Header(
+    x_signature: str | None = Header(
         default=None, alias="X-Twilio-Email-Event-Webhook-Signature"
     ),
-    x_timestamp: Optional[str] = Header(
+    x_timestamp: str | None = Header(
         default=None, alias="X-Twilio-Email-Event-Webhook-Timestamp"
     ),
 ) -> WebhookResponse:
@@ -325,8 +325,8 @@ async def sendgrid_webhook_receiver(
 
     try:
         events = json.loads(raw_body.decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON body.")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body.") from exc
 
     if not isinstance(events, list):
         raise HTTPException(status_code=400, detail="Body must be a JSON array.")
