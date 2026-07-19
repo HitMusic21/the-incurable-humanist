@@ -3,6 +3,7 @@ Pydantic schemas for API request/response validation.
 """
 
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -71,4 +72,64 @@ class NewsletterResponse(BaseModel):
     """Newsletter response schema containing list of articles."""
 
     articles: list[NewsletterArticle]
+    total_count: int
+
+
+# ========== Story Schemas ==========
+class StoryCreate(BaseModel):
+    """Author payload for POST /stories. `slug` optional — server generates from title."""
+
+    title: str = Field(..., min_length=1, max_length=500)
+    content: str = Field(..., min_length=1)  # Tiptap HTML
+    slug: Optional[str] = Field(default=None, max_length=255)
+    excerpt: Optional[str] = Field(default=None, max_length=500)
+    meta_description: Optional[str] = Field(default=None, max_length=320)
+    cover_image_url: Optional[str] = Field(default=None, max_length=500)
+    canonical_url: Optional[str] = Field(default=None, max_length=500)
+    content_warning: Optional[str] = Field(default=None, max_length=500)
+    status: str = Field(default="draft")  # "draft" | "published" | "archived"
+
+
+class StoryUpdate(BaseModel):
+    """Partial update — every field optional."""
+
+    title: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    content: Optional[str] = Field(default=None, min_length=1)
+    slug: Optional[str] = Field(default=None, max_length=255)
+    excerpt: Optional[str] = Field(default=None, max_length=500)
+    meta_description: Optional[str] = Field(default=None, max_length=320)
+    cover_image_url: Optional[str] = Field(default=None, max_length=500)
+    canonical_url: Optional[str] = Field(default=None, max_length=500)
+    content_warning: Optional[str] = Field(default=None, max_length=500)
+    status: Optional[str] = Field(default=None)
+
+
+class StoryPublic(BaseModel):
+    """Card/list projection — no full content."""
+
+    id: int
+    title: str
+    slug: str
+    excerpt: Optional[str]
+    meta_description: Optional[str]
+    cover_image_url: Optional[str]
+    canonical_url: Optional[str]
+    status: str
+    published_at: Optional[datetime]
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StoryDetail(StoryPublic):
+    """Full detail — includes body."""
+
+    content: str
+    content_warning: Optional[str]
+    view_count: int
+
+
+class StoryListResponse(BaseModel):
+    stories: list[StoryPublic]
     total_count: int

@@ -51,10 +51,19 @@ class Story(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     title: str = Field(max_length=500)
+    # Nullable at the model level so imports without a title-derived slug can
+    # be introduced by migration + backfill; NOT NULL enforced in migration 0003.
+    slug: str | None = Field(default=None, max_length=255, unique=True, index=True)
+    # If set, points to the canonical version off-site (e.g. Substack URL) and
+    # is emitted as <link rel="canonical"> on the essay page. Clear when the
+    # on-site page becomes canonical.
+    canonical_url: str | None = Field(default=None, max_length=500)
+    # Overrides <meta name="description"> — falls back to excerpt when empty.
+    meta_description: str | None = Field(default=None, max_length=320)
     content: str  # HTML from Tiptap editor
     excerpt: str | None = Field(default=None, max_length=500)
     cover_image_url: str | None = Field(default=None, max_length=500)
-    status: StoryStatus = Field(default=StoryStatus.DRAFT)
+    status: StoryStatus = Field(default=StoryStatus.DRAFT, index=True)
     author_notes: str | None = Field(default=None)
     content_warning: str | None = Field(default=None, max_length=500)
     view_count: int = Field(default=0)

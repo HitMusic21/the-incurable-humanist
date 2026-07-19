@@ -7,38 +7,64 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
 
-    <!-- Primary Meta Tags -->
-    <title>The Incurable Humanist | Exploring Grief, Migration, and Art</title>
-    <meta name="title" content="The Incurable Humanist | Exploring Grief, Migration, and Art" />
-    <meta name="description" content="A weekly newsletter by Denise Rodriguez Dao exploring grief, migration, and art. Personal essays on loss, displacement, transformation, and resilience through creativity." />
+    <!-- Primary Meta Tags (overridden per-page by the SEO component at runtime) -->
+    <title>The Incurable Humanist | Grief, Migration, and Art</title>
+    <meta name="title" content="The Incurable Humanist | Grief, Migration, and Art" />
+    <meta
+      name="description"
+      content="Denise Rodriguez Dao writes The Incurable Humanist — a weekly newsletter on grief, migration, and art. Read the archive, listen to audio essays, or book a talk."
+    />
     <meta name="author" content="Denise Rodriguez Dao" />
-    <meta name="keywords" content="grief, migration, art, newsletter, personal essays, Denise Rodriguez Dao, immigration, art world, Latin American art" />
+    <meta
+      name="keywords"
+      content="grief, migration, art, newsletter, personal essays, Denise Rodriguez Dao, immigration, Latin American art, diaspora"
+    />
+    <meta name="robots" content="index, follow" />
 
-    <!-- Open Graph / Facebook -->
+    <!-- Google Search Console verification.
+         TODO(setup): replace the value below with the token from https://search.google.com/search-console -->
+    <meta name="google-site-verification" content="REPLACE_WITH_GSC_TOKEN" />
+
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://theincurablehumanist.com/" />
-    <meta property="og:title" content="The Incurable Humanist | Exploring Grief, Migration, and Art" />
-    <meta property="og:description" content="A weekly newsletter by Denise Rodriguez Dao exploring grief, migration, and art. Personal essays on loss, displacement, transformation, and resilience through creativity." />
+    <meta property="og:title" content="The Incurable Humanist | Grief, Migration, and Art" />
+    <meta
+      property="og:description"
+      content="Denise Rodriguez Dao writes The Incurable Humanist — a weekly newsletter on grief, migration, and art."
+    />
     <meta property="og:image" content="https://theincurablehumanist.com/og-image.svg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="The Incurable Humanist" />
+    <meta property="og:locale" content="en_US" />
 
-    <!-- Twitter -->
+    <!-- Twitter / X -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://theincurablehumanist.com/" />
-    <meta property="twitter:title" content="The Incurable Humanist | Exploring Grief, Migration, and Art" />
-    <meta property="twitter:description" content="A weekly newsletter by Denise Rodriguez Dao exploring grief, migration, and art. Personal essays on loss, displacement, transformation, and resilience through creativity." />
+    <meta property="twitter:title" content="The Incurable Humanist | Grief, Migration, and Art" />
+    <meta
+      property="twitter:description"
+      content="Denise Rodriguez Dao writes The Incurable Humanist — a weekly newsletter on grief, migration, and art."
+    />
     <meta property="twitter:image" content="https://theincurablehumanist.com/og-image.svg" />
     <meta property="twitter:site" content="@TheIncurableHum" />
     <meta property="twitter:creator" content="@TheIncurableHum" />
 
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#6e5580" />
-    <meta name="msapplication-TileColor" content="#6e5580" />
+    <!-- Theme Color (matches --accent plum in globals.css) -->
+    <meta name="theme-color" content="#5a4370" />
+    <meta name="msapplication-TileColor" content="#5a4370" />
 
-    <!-- Canonical URL -->
+    <!-- Canonical (overridden per-page) -->
     <link rel="canonical" href="https://theincurablehumanist.com/" />
+
+    <!-- RSS discovery (feed generated at build time — see frontend/scripts/generate-sitemap.mjs) -->
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="The Incurable Humanist — Essays"
+      href="/rss.xml"
+    />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -51,34 +77,58 @@
       rel="stylesheet"
     />
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E0YFH2FWLN"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-E0YFH2FWLN');
+    <!-- Sitewide JSON-LD (@graph: Person + WebSite).
+         Article schema is added per-page via the SEO component.
+         Server-rendered here so Google + AI Overviews can read it without executing JS. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "@id": "https://theincurablehumanist.com/about#denise",
+            "name": "Denise Rodriguez Dao",
+            "givenName": "Denise",
+            "familyName": "Rodriguez Dao",
+            "url": "https://theincurablehumanist.com/about",
+            "image": "https://theincurablehumanist.com/founder.jpg",
+            "jobTitle": "Writer, Immigration Attorney",
+            "description": "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a foreign attorney at a boutique immigration law firm in Manhattan.",
+            "knowsAbout": ["Grief", "Migration", "Art", "Latin American Art", "Diaspora"],
+            "alumniOf": [
+              { "@type": "EducationalOrganization", "name": "Christie's Education, New York" },
+              { "@type": "EducationalOrganization", "name": "Andrés Bello Catholic University" }
+            ],
+            "sameAs": [
+              "https://www.instagram.com/theincurablehumanist/",
+              "https://www.tiktok.com/@theincurablehumanist",
+              "https://www.facebook.com/profile.php?id=61581842306462",
+              "https://www.linkedin.com/company/the-incurable-humanist/about/",
+              "https://x.com/TheIncurableHum",
+              "https://theincurablehumanist.substack.com"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://theincurablehumanist.com/#website",
+            "url": "https://theincurablehumanist.com/",
+            "name": "The Incurable Humanist",
+            "description": "Grief, migration, and art — and what gets inherited anyway.",
+            "publisher": { "@id": "https://theincurablehumanist.com/about#denise" },
+            "inLanguage": "en-US"
+          }
+        ]
+      }
     </script>
 
-    <!-- Meta Pixel Code -->
-    <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '809214198133257');
-      fbq('track', 'PageView');
-    </script>
-    <!-- End Meta Pixel Code -->
+    <!--
+      Third-party marketing tags (Google Analytics, Meta Pixel, TikTok Pixel) are loaded
+      conditionally in src/main.tsx AFTER consent is granted (per CNIL 2025 enforcement).
+      Google Search Console verification meta above requires no consent (Google is sole
+      data controller and drops no cookies on the visitor for GSC alone).
+    -->
   </head>
   <body>
-    <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id=809214198133257&ev=PageView&noscript=1"
-    /></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
