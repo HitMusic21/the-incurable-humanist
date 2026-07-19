@@ -20,6 +20,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/tih_db
       DB_SSL: disable
       PORT: 8000
+      # Local scheduler auth; matches Makefile default. Override in prod via
+      # `gcloud run services update … --set-env-vars SCHEDULER_TOKEN=…`.
+      SCHEDULER_TOKEN: dev-tick-token
+      # Passed through from the host shell — used by webhook signature verify.
+      # Local smoke test sets this from a generated keypair; unset by default
+      # so the webhook fails closed (503).
+      SENDGRID_WEBHOOK_PUBLIC_KEY: ${SENDGRID_WEBHOOK_PUBLIC_KEY:-}
     depends_on:
       - db
     ports:

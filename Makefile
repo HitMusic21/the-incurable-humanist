@@ -15,6 +15,16 @@ be-lint:
 be-format:
 	black backend && isort backend
 
+# Manually fire the welcome-sequence scheduler locally. Override BACKEND_URL
+# for a non-default port (docker-compose maps to 8010).
+BACKEND_URL ?= http://localhost:8010
+SCHEDULER_TOKEN ?= dev-tick-token
+.PHONY: tick
+tick:
+	@curl -sS -X POST $(BACKEND_URL)/leads/sequence/tick \
+		-H "X-Scheduler-Token: $(SCHEDULER_TOKEN)" \
+		-w '\nHTTP=%{http_code}\n'
+
 # Frontend
 .PHONY: fe-install fe-dev fe-build fe-test fe-lint fe-typecheck
 fe-install:
