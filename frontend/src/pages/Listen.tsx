@@ -1,5 +1,6 @@
 import Card from "@/components/Card";
 import SectionTitle from "@/components/SectionTitle";
+import SpotifyPlaylist from "@/components/SpotifyPlaylist";
 import SubscribeCTA from "@/components/SubscribeCTA";
 import SEO from "@/components/SEO";
 import { SITE } from "@/config/site";
@@ -58,14 +59,11 @@ export default function Listen() {
         <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
           Playlist
         </h2>
-        {SITE.spotifyPlaylistUrl ? (
+        {SITE.spotifyPlaylistId ? (
           <Card className="p-4 md:p-6">
-            <iframe
-              src={SITE.spotifyPlaylistUrl}
-              title="The Incurable Humanist — Spotify playlist"
-              className="w-full h-[380px] rounded-xl border-0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
+            <SpotifyPlaylist
+              playlistId={SITE.spotifyPlaylistId}
+              title="The Incurable Humanist — playlist on Spotify"
             />
           </Card>
         ) : (

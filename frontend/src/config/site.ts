@@ -12,7 +12,10 @@ export const SITE = {
   bookingEmail: "booking@theincurablehumanist.com",
   substackUrl: "https://theincurablehumanist.substack.com",
   substackSubscribeUrl: "https://theincurablehumanist.substack.com/subscribe",
-  spotifyPlaylistUrl: null as string | null,
+  // Playlist ID only — Listen.tsx builds the /embed/ URL from it. Storing the
+  // share URL instead is the common mistake: pasted straight into an iframe it
+  // renders the full web player rather than the embed.
+  spotifyPlaylistId: "0G5Z5masq2ajzCP6nUHCBd" as string | null,
   youtubeUrl: null as string | null,
   siteUrl: "https://theincurablehumanist.com",
   socials: {
