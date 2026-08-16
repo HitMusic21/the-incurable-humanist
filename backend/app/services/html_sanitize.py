@@ -36,7 +36,9 @@ ALLOWED_TAGS: set[str] = {
 }
 
 ALLOWED_ATTRS: dict[str, set[str]] = {
-    "a": {"href", "title"},
+    # aria-label is ours, not Substack's — see _name_figure_links. Allowlisted so
+    # a re-sanitize of already-stored HTML doesn't strip the accessible name.
+    "a": {"href", "title", "aria-label"},
     "img": {"src", "alt", "width", "height", "loading", "srcset", "sizes"},
     "source": {"srcset", "type", "sizes"},
 }
@@ -46,6 +48,13 @@ ALLOWED_URL_SCHEMES: set[str] = {"http", "https", "mailto"}
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 _IMG_OPEN_RE = re.compile(r"<img(?![^>]*\bloading=)")
+# Whole <figure> block: the caption is an *uncle* of the <img> (figure > a >
+# picture > img, with figcaption a sibling of the <a>), so a sibling-scoped
+# regex would never see it.
+_FIGURE_RE = re.compile(r"<figure\b[^>]*>.*?</figure>", re.IGNORECASE | re.DOTALL)
+_FIGCAPTION_RE = re.compile(r"<figcaption\b[^>]*>(.*?)</figcaption>", re.IGNORECASE | re.DOTALL)
+_LINK_OPEN_RE = re.compile(r"<a\b(?![^>]*\baria-label=)", re.IGNORECASE)
+_ALT_RE = re.compile(r'\salt=(["\']).*?\1', re.IGNORECASE | re.DOTALL)
 # Captures a whole srcset="..." / srcset='...' attribute so it can be dropped
 # wholesale when any candidate URL carries a disallowed scheme.
 _SRCSET_RE = re.compile(r"\ssrcset=([\"'])(.*?)\1", re.IGNORECASE | re.DOTALL)
@@ -97,6 +106,36 @@ def _scrub_srcset(match: re.Match[str]) -> str:
     return match.group(0)
 
 
+def _name_figure_link(match: re.Match[str]) -> str:
+    """Give an image-wrapping <a> an accessible name (axe `link-name`, serious).
+
+    Substack ships every figure image with `alt=""`, so `<a><img alt=""></a>`
+    has no accessible name at all — the link is announced as bare "link" and
+    axe flags it on all 71 essays.
+
+    Measured over 20 real posts (57 images in figures): 37 carry a figcaption,
+    20 do not. So a caption-only fix leaves a third of the corpus failing:
+
+      - Caption present: reuse its text as the img's alt AND the link's
+        aria-label. The caption is the author's own description, so it is the
+        most accurate name available.
+      - No caption: leave alt="" — the image really is decorative here and
+        inventing a description would be worse than none — and name the link
+        generically so it is still announceable.
+    """
+    figure = match.group(0)
+    if "aria-label=" in figure:
+        return figure
+    caption = _FIGCAPTION_RE.search(figure)
+    label = plain_text(caption.group(1)) if caption else ""
+    if label:
+        alt = html_module.escape(label, quote=True)
+        figure = _ALT_RE.sub("", figure).replace("<img", f'<img alt="{alt}"', 1)
+    else:
+        label = "View image"
+    return _LINK_OPEN_RE.sub(f'<a aria-label="{html_module.escape(label, quote=True)}"', figure, 1)
+
+
 def sanitize_substack_html(raw: str) -> str:
     """Allowlist-sanitize remote article HTML and lazy-load its images."""
     if not raw:
@@ -110,9 +149,10 @@ def sanitize_substack_html(raw: str) -> str:
     )
     # See _scrub_srcset: nh3 does not scheme-check srcset, so we do it here.
     cleaned = _SRCSET_RE.sub(_scrub_srcset, cleaned)
-    # nh3 filters attributes, it never adds them — so loading="lazy" is a
-    # post-pass. Guarded so we never double-apply it.
-    return _IMG_OPEN_RE.sub('<img loading="lazy"', cleaned)
+    # nh3 filters attributes, it never adds them — so loading="lazy" and the
+    # figure accessible names are post-passes. Both guarded against double-apply.
+    cleaned = _IMG_OPEN_RE.sub('<img loading="lazy"', cleaned)
+    return _FIGURE_RE.sub(_name_figure_link, cleaned)
 
 
 def plain_text(html: str) -> str:

@@ -9,6 +9,7 @@ import { SITE } from "@/config/site";
 import { API_CONFIG, type StoryPublic } from "@/config/api";
 import { articleGraphForSite, articleNode } from "@/lib/schema";
 import { withUTM } from "@/lib/utm";
+import { formatDate } from "@/lib/date";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
 // How many essays to show before the "Load more" control. The full corpus is
@@ -33,12 +34,9 @@ function useOnSiteEssays() {
   return stories;
 }
 
-function formatDate(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-}
+// The best-of list ships with unfilled placeholder rows until Denise picks the
+// essays. Rendering them leaks "[TODO: …]" onto a live page.
+const bestOfEssays = SITE.bestOfEssays.filter((e) => !e.title.startsWith("[TODO"));
 
 export default function Archive() {
   const onSiteEssays = useOnSiteEssays();
@@ -155,12 +153,13 @@ export default function Archive() {
       )}
 
       {/* Best-of */}
+      {bestOfEssays.length > 0 && (
       <section className="container mt-16 max-w-5xl">
         <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
           Start here — Best of
         </h2>
         <div className="grid gap-6 md:grid-cols-2">
-          {SITE.bestOfEssays.map((essay) => {
+          {bestOfEssays.map((essay) => {
             const href = withUTM(essay.href, {
               source: "website",
               medium: "referral",
@@ -191,6 +190,7 @@ export default function Archive() {
           })}
         </div>
       </section>
+      )}
 
       {/* End-of-best-of CTA */}
       <section className="container mt-10 max-w-3xl">

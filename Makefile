@@ -44,3 +44,9 @@ fe-lint:
 
 fe-typecheck:
 	cd frontend && npm run typecheck
+
+# Aggregate gates — run these before committing.
+.PHONY: lint test
+lint: be-lint fe-lint
+
+test: be-test fe-test

@@ -41,6 +41,8 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/tih_db
           DB_SSL: disable
+          # Auth fails closed without this; contract tests exercise login/register.
+          SECRET_KEY: test-secret-not-used-in-prod
         run: python -m pytest -q
   frontend:
     runs-on: ubuntu-latest

@@ -32,6 +32,9 @@ http {
       rewrite ^/api/(.*)$ /$1 break;
       proxy_pass ${BACKEND_URL};
       proxy_http_version 1.1;
+      # Cloud Run's edge routes on SNI; without this nginx omits it on the
+      # upstream TLS handshake and every proxied request 404s.
+      proxy_ssl_server_name on;
       proxy_set_header Host $proxy_host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

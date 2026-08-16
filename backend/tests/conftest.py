@@ -67,6 +67,27 @@ _TRUNCATE_TABLES: tuple[str, ...] = (
 )
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _disable_rate_limits():
+    """
+    Turn slowapi off for the whole session.
+
+    The limiter keys on client IP and its counters are process-global, so they
+    survive the per-test TRUNCATE. Five contract files register the same author
+    through POST /auth/register (12 call sites against a 10/hour limit), so
+    whichever file runs later gets a 429, its author fixture silently no-ops,
+    and its tests fail with "Author not found" — a pure test-ordering artifact.
+
+    Limits themselves are covered directly in test_auth_api.py; this only stops
+    them leaking across unrelated files.
+    """
+    from app.api.leads import limiter
+
+    limiter.enabled = False
+    yield
+    limiter.enabled = True
+
+
 @pytest.fixture(autouse=True)
 def _clean_db_between_tests():
     """

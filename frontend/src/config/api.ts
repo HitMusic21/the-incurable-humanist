@@ -70,14 +70,3 @@ export type StoryListResponse = {
   stories: StoryPublic[];
   total_count: number;
 };
-
-export type NewsletterArticle = {
-  title: string;
-  link: string;
-  description: string;
-  published: string;
-};
-
-export type NewsletterArticlesResponse = {
-  articles: NewsletterArticle[];
-};

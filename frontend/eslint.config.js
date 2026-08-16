@@ -42,11 +42,4 @@ export default defineConfig([
       'no-empty': 'off',
     },
   },
-  // ContactForm uses Formspree's untyped callback surface.
-  {
-    files: ['src/components/ContactForm.tsx'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
-  },
 ])

@@ -6,7 +6,6 @@ import asyncio
 import logging
 import os
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
@@ -32,42 +31,6 @@ async_session_maker = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
-
-
-async def test_db_connection() -> bool:
-    """
-    Test database connectivity during application startup.
-
-    Returns:
-        bool: True if connection successful, False otherwise
-
-    Usage:
-        Called during app startup to verify asyncpg driver and connection
-    """
-    try:
-        host_part = (
-            settings.DATABASE_URL.split("@")[1] if "@" in settings.DATABASE_URL else "database"
-        )
-        logger.info(f"Testing database connection to: {host_part}")
-
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT 1 as test"))
-            row = result.fetchone()
-
-            if row and row[0] == 1:
-                logger.info("✓ Database connection test successful (asyncpg driver working)")
-                logger.info(f"✓ Driver: {engine.driver}")
-                logger.info(f"✓ Dialect: {engine.dialect.name}")
-                return True
-            else:
-                logger.error("✗ Database connection test failed: unexpected result")
-                return False
-
-    except Exception as e:
-        logger.error(f"✗ Database connection test failed: {e}")
-        logger.error("  DATABASE_URL pattern: postgresql+asyncpg://...")
-        logger.error("  Ensure asyncpg is installed and DATABASE_URL uses +asyncpg driver")
-        return False
 
 
 async def db_ping() -> bool:
@@ -99,28 +62,17 @@ async def init_db() -> None:
     Raises:
         RuntimeError: If unable to connect after all retries
     """
-    # First, test the connection to verify asyncpg driver is working
-    logger.info("=" * 60)
-    logger.info("DATABASE CONNECTIVITY TEST")
-    logger.info("=" * 60)
-
-    connection_test = await test_db_connection()
-
-    if not connection_test:
-        logger.error("Initial database connection test failed!")
-        logger.error("Please verify DATABASE_URL uses postgresql+asyncpg:// driver")
-        raise RuntimeError(
-            "Database connection test failed — check DATABASE_URL and asyncpg installation"
-        )
-
-    logger.info("=" * 60)
-
     max_retries = 10
     base_delay = 1.5
 
     for attempt in range(1, max_retries + 1):
         try:
             logger.info(f"Database initialization attempt {attempt}/{max_retries}")
+
+            # Probe inside the loop so a cold-start blip retries with backoff
+            # instead of crash-looping the container before the first attempt.
+            if not await db_ping():
+                raise Exception("Database not reachable")
 
             async with engine.begin() as conn:
                 # Import all models INSIDE the function so SQLModel.metadata

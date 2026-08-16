@@ -3,6 +3,7 @@ Application configuration settings.
 """
 
 import os
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -23,7 +24,11 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Absolute, not ".env" — pydantic resolves a relative env_file against the
+        # working directory, so `pytest` from the repo root silently missed
+        # backend/.env while `uvicorn --app-dir backend` found it. That made
+        # SECRET_KEY fall back to its default in every root-run test.
+        env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
     )
@@ -31,8 +36,10 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/tih_db"
 
-    # Security
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    # Security — no default. A shared default would sign forgeable JWTs, so
+    # security.py fails closed with a 503 when this is unset (or still the old
+    # public sentinel value). python-jose happily signs with "" too.
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 

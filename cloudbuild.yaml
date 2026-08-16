@@ -6,6 +6,11 @@ substitutions:
   # Author the Substack sync attributes imported essays to. Must match a User
   # row with is_author=true, or the sync fails closed with a 503.
   _AUTHOR_EMAIL: denise@theincurablehumanist.com
+  # Public URL of the backend Cloud Run service. nginx proxies /api/* here.
+  # Empty by default so a fresh project builds; MUST be set on the trigger
+  # (or via --substitutions) or the SPA's API calls fail — the image's
+  # fallback is http://backend:8000, which does not resolve on Cloud Run.
+  _BACKEND_URL: ''
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -24,6 +29,26 @@ steps:
     args: ['push', 'gcr.io/$PROJECT_ID/${_REPO_NAME}-backend:$COMMIT_SHA']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/${_REPO_NAME}-frontend:$COMMIT_SHA']
+
+  # Run migrations before the new code is served. Uses the backend image we
+  # just built, so alembic + the versions/ tree are already present.
+  #
+  # Tradeoff: this needs the DB reachable from the build worker. That means a
+  # public Postgres endpoint (Railway/Neon) or a Cloud SQL proxy sidecar — the
+  # service's own DATABASE_URL is set out-of-band, so it is mirrored into
+  # Secret Manager as `tih-database-url` for this step alone. A Cloud Run Job
+  # would avoid that duplication but adds a resource to provision and poll;
+  # one build step is the smaller moving part while the schema is this small.
+  #
+  # alembic.ini uses repo-root-relative paths (script_location=backend/alembic),
+  # so this must run from /app. The image's WORKDIR is /app/backend, which
+  # would resolve to backend/backend/alembic and fail — hence the explicit cd.
+  - name: 'gcr.io/$PROJECT_ID/${_REPO_NAME}-backend:$COMMIT_SHA'
+    entrypoint: bash
+    args:
+      - '-c'
+      - 'cd /app && alembic -c backend/alembic.ini upgrade head'
+    secretEnv: ['DATABASE_URL']
 
   # Deploy backend to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -44,7 +69,10 @@ steps:
         # rather than inline: it is a bearer credential, and the endpoint
         # fails closed with 503 when it is unset, so a missing secret disables
         # the Substack sync silently rather than exposing it.
-        '--update-secrets','SCHEDULER_TOKEN=tih-scheduler-token:latest'
+        # SECRET_KEY signs JWTs. Same fail-closed contract: auth endpoints
+        # return 503 when it is unset, so a missing secret disables login
+        # rather than falling back to a guessable key.
+        '--update-secrets','SCHEDULER_TOKEN=tih-scheduler-token:latest,SECRET_KEY=tih-secret-key:latest'
       ]
 
   # Deploy frontend to Cloud Run
@@ -56,8 +84,19 @@ steps:
         '--image','gcr.io/$PROJECT_ID/${_REPO_NAME}-frontend:$COMMIT_SHA',
         '--region','${_REGION}',
         '--platform','managed',
-        '--allow-unauthenticated'
+        '--allow-unauthenticated',
+        # nginx reads BACKEND_URL at boot via envsubst. Without it the image
+        # falls back to the compose-only http://backend:8000 and every /api/*
+        # request fails on Cloud Run.
+        '--update-env-vars','BACKEND_URL=${_BACKEND_URL}'
       ]
+
+# DATABASE_URL for the migration step only. Cloud Run gets its own copy
+# out-of-band; this mirror exists because build workers can't read service env.
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/tih-database-url/versions/latest
+      env: DATABASE_URL
 
 images:
   - 'gcr.io/$PROJECT_ID/${_REPO_NAME}-backend:$COMMIT_SHA'

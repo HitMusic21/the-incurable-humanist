@@ -37,7 +37,59 @@ gcloud run services update tih-backend \
 
 `cloudbuild.yaml` sets `PYTHONUNBUFFERED` and `AUTHOR_EMAIL` on every deploy (via
 `--update-env-vars`, so it merges rather than clobbering the values above) and
-mounts `SCHEDULER_TOKEN` from Secret Manager.
+mounts `SCHEDULER_TOKEN` and `SECRET_KEY` from Secret Manager.
+
+### Frontend: `_BACKEND_URL` is required
+
+The frontend image ships `BACKEND_URL=http://backend:8000` (a docker-compose
+hostname that does not resolve on Cloud Run). `cloudbuild.yaml` overrides it
+from the `_BACKEND_URL` substitution — set it on the build trigger, or every
+`/api/*` call from the SPA fails:
+
+```bash
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_BACKEND_URL=https://tih-backend-xyz.a.run.app
+```
+
+## JWT signing key — required
+
+`SECRET_KEY` signs and verifies every JWT. It has **no default**: the auth
+endpoints return 503 when it is unset (or still the old public sentinel), so a
+missing secret disables login rather than issuing forgeable tokens.
+
+```bash
+openssl rand -hex 32 | gcloud secrets create tih-secret-key --data-file=-
+
+PROJECT_NUMBER=$(gcloud projects describe "$(gcloud config get-value project)" --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding tih-secret-key \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role=roles/secretmanager.secretAccessor
+```
+
+Rotating this secret invalidates all outstanding tokens — users must log in again.
+
+## Database migrations
+
+`cloudbuild.yaml` runs `alembic upgrade head` from the freshly built backend
+image **before** the backend deploys, so schema changes land ahead of the code
+that needs them. Migration `0005` includes a canonical_url cleanup its own
+docstring flags as not optional.
+
+The build worker needs its own database credentials (it cannot read the Cloud
+Run service's env), so mirror `DATABASE_URL` into Secret Manager:
+
+```bash
+printf '%s' 'postgresql+asyncpg://...' | gcloud secrets create tih-database-url --data-file=-
+
+gcloud secrets add-iam-policy-binding tih-database-url \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role=roles/secretmanager.secretAccessor
+```
+
+This requires the database to be reachable from the build worker (a public
+endpoint such as Railway/Neon, or a Cloud SQL proxy). A Cloud Run Job would
+avoid mirroring the credential but adds a resource to provision and poll; the
+build step is the smaller moving part at this schema size.
 
 ## Substack sync — one-time setup
 

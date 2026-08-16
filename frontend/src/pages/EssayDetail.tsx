@@ -5,6 +5,7 @@ import SubscribeCTA from "@/components/SubscribeCTA";
 import Card from "@/components/Card";
 import { API_CONFIG, type StoryDetail as StoryDetailData } from "@/config/api";
 import { articleNode, articleGraphForSite } from "@/lib/schema";
+import { formatDate } from "@/lib/date";
 import { SITE } from "@/config/site";
 import { useScrollDepth } from "@/hooks/useScrollDepth";
 
@@ -43,19 +44,6 @@ function useStory(slug: string | undefined): State {
   }, [slug]);
 
   return state;
-}
-
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return null;
-  }
 }
 
 export default function EssayDetail() {

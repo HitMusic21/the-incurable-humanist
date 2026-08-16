@@ -135,6 +135,65 @@ class TestSrcsetScrubbing:
         assert sanitize_substack_html("") == ""
 
 
+class TestFigureLinkNames:
+    """axe `link-name` (serious) x2 on every one of the 71 essays.
+
+    Substack ships `alt=""`, so `<figure><a><img alt=""></a></figure>` has no
+    accessible name. Measured over 20 real posts (57 images in figures): 37
+    have a figcaption to borrow, 20 have none — hence two branches.
+    """
+
+    def test_caption_becomes_alt_and_link_name(self):
+        out = sanitize_substack_html(SUBSTACK_IMAGE_HTML)
+        assert 'alt="Henri-Lucien Doucet"' in out
+        assert 'aria-label="Henri-Lucien Doucet"' in out
+
+    def test_caption_markup_is_stripped_from_the_attribute(self):
+        """The caption's own <strong>/<em> must not leak into an attribute."""
+        html = (
+            "<figure><a href='https://x/'><img src='https://x/a.png' alt=''></a>"
+            "<figcaption>Edward Hopper, <em>Nighthawks, </em>1942</figcaption></figure>"
+        )
+        out = sanitize_substack_html(html)
+        assert 'aria-label="Edward Hopper, Nighthawks, 1942"' in out
+        assert "<em>" in out, "the caption itself keeps its markup"
+
+    def test_quotes_in_caption_are_escaped(self):
+        html = (
+            "<figure><a href='https://x/'><img src='https://x/a.png' alt=''></a>"
+            '<figcaption>She said "hello"</figcaption></figure>'
+        )
+        out = sanitize_substack_html(html)
+        assert 'aria-label="She said &quot;hello&quot;"' in out
+        assert 'alt="She said &quot;hello&quot;"' in out
+        assert 'She said "hello"</figcaption>' in out, "visible caption text is untouched"
+
+    def test_captionless_figure_keeps_empty_alt_and_gets_generic_name(self):
+        """Nothing to borrow — the image is decorative, so don't invent a description."""
+        html = "<figure><a href='https://x/'><img src='https://x/a.png' alt=''></a></figure>"
+        out = sanitize_substack_html(html)
+        assert 'aria-label="View image"' in out
+        assert 'alt=""' in out
+
+    @pytest.mark.parametrize(
+        "html",
+        [
+            SUBSTACK_IMAGE_HTML,
+            "<figure><a href='https://x/'><img src='https://x/a.png' alt=''></a></figure>",
+        ],
+    )
+    def test_does_not_double_apply(self, html):
+        """Re-sanitizing stored HTML must be a no-op, not a second aria-label."""
+        once = sanitize_substack_html(html)
+        assert sanitize_substack_html(once) == once
+        assert once.count("aria-label") == 1
+
+    def test_leaves_prose_links_alone(self):
+        """Only figure links are renamed — inline links already have text."""
+        out = sanitize_substack_html('<p><a href="https://example.com">read this</a></p>')
+        assert "aria-label" not in out
+
+
 class TestContentHash:
     def test_ignores_image_markup_differences(self):
         """The load-bearing property.
