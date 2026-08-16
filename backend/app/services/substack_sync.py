@@ -207,8 +207,16 @@ async def upsert_entry(
         # Text is unchanged. Leave the row — and its richer markup — alone.
         return "updated" if resurrected else "skipped"
 
-    # Genuine edit. Prefer API markup when the stored row already has it.
-    if source == "rss" and existing.content_source == "api" and refetch_api is not None:
+    # Genuine edit. Always prefer the JSON API's markup over the feed's: RSS
+    # omits <picture> and every responsive srcset, so storing its body verbatim
+    # degrades the images.
+    #
+    # This deliberately does NOT check `existing.content_source`. Gating on
+    # `== "api"` only protected rows that were already rich and left `rss` rows
+    # permanently poor — they would be rewritten from the feed on every edit and
+    # never upgrade. Any RSS-sourced update re-fetches, so rows converge on API
+    # quality instead of being stuck at whichever source happened to create them.
+    if source == "rss" and refetch_api is not None:
         slug = source_url.rstrip("/").rsplit("/", 1)[-1]
         try:
             richer = await refetch_api(slug)
