@@ -72,3 +72,67 @@ class NewsletterResponse(BaseModel):
 
     articles: list[NewsletterArticle]
     total_count: int
+
+
+# ========== Story Schemas ==========
+class StoryCreate(BaseModel):
+    """Author payload for POST /stories. `slug` optional — server generates from title."""
+
+    title: str = Field(..., min_length=1, max_length=500)
+    content: str = Field(..., min_length=1)  # Tiptap HTML
+    slug: str | None = Field(default=None, max_length=255)
+    excerpt: str | None = Field(default=None, max_length=500)
+    meta_description: str | None = Field(default=None, max_length=320)
+    cover_image_url: str | None = Field(default=None, max_length=500)
+    canonical_url: str | None = Field(default=None, max_length=500)
+    content_warning: str | None = Field(default=None, max_length=500)
+    status: str = Field(default="draft")  # "draft" | "published" | "archived"
+
+
+class StoryUpdate(BaseModel):
+    """Partial update — every field optional."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    content: str | None = Field(default=None, min_length=1)
+    slug: str | None = Field(default=None, max_length=255)
+    excerpt: str | None = Field(default=None, max_length=500)
+    meta_description: str | None = Field(default=None, max_length=320)
+    cover_image_url: str | None = Field(default=None, max_length=500)
+    canonical_url: str | None = Field(default=None, max_length=500)
+    content_warning: str | None = Field(default=None, max_length=500)
+    status: str | None = Field(default=None)
+
+
+class StoryPublic(BaseModel):
+    """Card/list projection — no full content."""
+
+    id: int
+    title: str
+    slug: str
+    excerpt: str | None
+    meta_description: str | None
+    cover_image_url: str | None
+    canonical_url: str | None
+    # Substack permalink this row was synced from. Drives the "first published
+    # on Substack" credit line — NOT the canonical URL, which stays on-site.
+    source_url: str | None = None
+    read_time_minutes: int | None = None
+    status: str
+    published_at: datetime | None
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StoryDetail(StoryPublic):
+    """Full detail — includes body."""
+
+    content: str
+    content_warning: str | None
+    view_count: int
+
+
+class StoryListResponse(BaseModel):
+    stories: list[StoryPublic]
+    total_count: int

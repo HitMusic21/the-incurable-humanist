@@ -2,9 +2,11 @@
 Authentication API endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Shared limiter instance — app.state.limiter points at this one (see main.py).
+from app.api.leads import limiter
 from app.core.database import get_session
 from app.services.auth import (
     authenticate_user,
@@ -26,8 +28,10 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 async def register(
-    request: UserRegisterRequest,
+    request: Request,  # noqa: ARG001  # slowapi requires a param with this exact name
+    payload: UserRegisterRequest = Body(...),
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -38,9 +42,9 @@ async def register(
     - **full_name**: User's full name
     """
     user = await register_user(
-        email=request.email,
-        password=request.password,
-        full_name=request.full_name,
+        email=payload.email,
+        password=payload.password,
+        full_name=payload.full_name,
         session=session,
     )
 
@@ -48,8 +52,10 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/hour")
 async def login(
-    request: UserLoginRequest,
+    request: Request,  # noqa: ARG001  # slowapi requires a param with this exact name
+    payload: UserLoginRequest = Body(...),
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -58,8 +64,8 @@ async def login(
     Returns JWT access token and user info.
     """
     user = await authenticate_user(
-        email=request.email,
-        password=request.password,
+        email=payload.email,
+        password=payload.password,
         session=session,
     )
 
@@ -79,7 +85,7 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """
     Get current authenticated user info.

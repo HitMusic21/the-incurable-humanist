@@ -23,11 +23,17 @@ async def test_database_url_normalization():
     print("TEST 1: DATABASE_URL Normalization")
     print("=" * 70)
 
-    from app.core.settings import normalize_database_url
+    from app.core.db_url import normalize_database_url
 
     test_cases = [
-        ("postgres://user:pass@host:5432/db", "postgresql+asyncpg://user:pass@host:5432/db?ssl=require"),
-        ("postgresql://user:pass@host:5432/db", "postgresql+asyncpg://user:pass@host:5432/db?ssl=require"),
+        (
+            "postgres://user:pass@host:5432/db",
+            "postgresql+asyncpg://user:pass@host:5432/db?ssl=require",
+        ),
+        (
+            "postgresql://user:pass@host:5432/db",
+            "postgresql+asyncpg://user:pass@host:5432/db?ssl=require",
+        ),
         (
             "postgresql+asyncpg://user:pass@host:5432/db?sslmode=require",
             "postgresql+asyncpg://user:pass@host:5432/db?ssl=require",
@@ -101,9 +107,8 @@ async def test_database_connection():
     print("TEST 4: Database Connection")
     print("=" * 70)
 
-    from sqlalchemy import text
-
     from app.core.database import engine
+    from sqlalchemy import text
 
     try:
         print("\nAttempting to connect to database...")
@@ -112,7 +117,7 @@ async def test_database_connection():
             result = await conn.execute(text("SELECT version()"))
             version = result.scalar()
 
-            print(f"✓ Connection successful!")
+            print("✓ Connection successful!")
             print(f"PostgreSQL version: {version}")
 
         return True

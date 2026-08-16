@@ -3,6 +3,7 @@ import SocialIconButton from "./SocialIconButton";
 import { SITE } from "@/config/site";
 import { useAnalytics } from '@/hooks/useAnalytics';
 
+
 export default function Footer() {
   const { track, events } = useAnalytics();
   return (
@@ -65,13 +66,15 @@ export default function Footer() {
                 </svg>
               </SocialIconButton>
             </div>
-            <Link
-              to="/newsletter"
+            <a
+              href={SITE.substackSubscribeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => track(events.NEWSLETTER_SIGNUP, { source: 'footer_link' })}
               className="text-accent hover:text-accent2 font-semibold transition focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded inline-block"
             >
               Subscribe to Newsletter →
-            </Link>
+            </a>
           </div>
         </div>
 

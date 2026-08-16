@@ -1,0 +1,54 @@
+worker_processes 1;
+
+events { worker_connections 1024; }
+
+http {
+  include       mime.types;
+  default_type  application/octet-stream;
+  sendfile        on;
+  keepalive_timeout  65;
+
+  server {
+    listen ${NGINX_PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Reverse proxy /api/* → backend service.
+    # BACKEND_URL is injected at container start via envsubst (see Dockerfile).
+    # Prod: `--set-env-vars BACKEND_URL=https://tih-backend-xyz.a.run.app`
+    # Dev:  docker-compose sets it to `http://backend:8000` (compose service DNS).
+    #
+    # Note: nginx resolves BACKEND_URL's hostname at boot. Cloud Run URLs are
+    # stable for the life of a service, so that's fine. If the URL changes,
+    # redeploy the frontend service to pick it up.
+    location /api/ {
+      # Strip the /api prefix — backend routes are mounted at /auth, /leads, etc.
+      rewrite ^/api/(.*)$ /$1 break;
+      proxy_pass ${BACKEND_URL};
+      proxy_http_version 1.1;
+      # Cloud Run's edge routes on SNI; without this nginx omits it on the
+      # upstream TLS handshake and every proxied request 404s.
+      proxy_ssl_server_name on;
+      proxy_set_header Host $proxy_host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_read_timeout 30s;
+    }
+
+    location / {
+      try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|woff2?|ttf|eot)$ {
+      expires 7d;
+      access_log off;
+    }
+  }
+}

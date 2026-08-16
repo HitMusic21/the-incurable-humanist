@@ -22,12 +22,127 @@ gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=us-central
 ```
 
 ## Environment Variables
+
+> **Use `--update-env-vars`, not `--set-env-vars`.** `--set-env-vars` REPLACES the
+> service's entire env var set, so a second call silently drops everything the
+> first one configured. Two `--set-env-vars` flags in one command is the same bug:
+> only the last wins.
+
 - Backend: set `DATABASE_URL`, `SENDGRID_API_KEY`, etc.
   ```bash
 gcloud run services update tih-backend \
   --region us-central1 \
-  --set-env-vars DATABASE_URL="postgresql+asyncpg://..." \
-  --set-env-vars PYTHONUNBUFFERED=1
+  --update-env-vars DATABASE_URL="postgresql+asyncpg://...",PYTHONUNBUFFERED=1
+```
+
+`cloudbuild.yaml` sets `PYTHONUNBUFFERED` and `AUTHOR_EMAIL` on every deploy (via
+`--update-env-vars`, so it merges rather than clobbering the values above) and
+mounts `SCHEDULER_TOKEN` and `SECRET_KEY` from Secret Manager.
+
+### Frontend: `_BACKEND_URL` is required
+
+The frontend image ships `BACKEND_URL=http://backend:8000` (a docker-compose
+hostname that does not resolve on Cloud Run). `cloudbuild.yaml` overrides it
+from the `_BACKEND_URL` substitution — set it on the build trigger, or every
+`/api/*` call from the SPA fails:
+
+```bash
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_BACKEND_URL=https://tih-backend-xyz.a.run.app
+```
+
+## JWT signing key — required
+
+`SECRET_KEY` signs and verifies every JWT. It has **no default**: the auth
+endpoints return 503 when it is unset (or still the old public sentinel), so a
+missing secret disables login rather than issuing forgeable tokens.
+
+```bash
+openssl rand -hex 32 | gcloud secrets create tih-secret-key --data-file=-
+
+PROJECT_NUMBER=$(gcloud projects describe "$(gcloud config get-value project)" --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding tih-secret-key \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role=roles/secretmanager.secretAccessor
+```
+
+Rotating this secret invalidates all outstanding tokens — users must log in again.
+
+## Database migrations
+
+`cloudbuild.yaml` runs `alembic upgrade head` from the freshly built backend
+image **before** the backend deploys, so schema changes land ahead of the code
+that needs them. Migration `0005` includes a canonical_url cleanup its own
+docstring flags as not optional.
+
+The build worker needs its own database credentials (it cannot read the Cloud
+Run service's env), so mirror `DATABASE_URL` into Secret Manager:
+
+```bash
+printf '%s' 'postgresql+asyncpg://...' | gcloud secrets create tih-database-url --data-file=-
+
+gcloud secrets add-iam-policy-binding tih-database-url \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role=roles/secretmanager.secretAccessor
+```
+
+This requires the database to be reachable from the build worker (a public
+endpoint such as Railway/Neon, or a Cloud SQL proxy). A Cloud Run Job would
+avoid mirroring the credential but adds a resource to provision and poll; the
+build step is the smaller moving part at this schema size.
+
+## Substack sync — one-time setup
+
+`POST /stories/sync` mirrors Substack essays into the `story` table. It **fails
+closed**: with no `SCHEDULER_TOKEN` it returns 503 and syncs nothing, so these
+steps are required before the sync will ever run.
+
+**1. Create the scheduler token secret** (referenced by `cloudbuild.yaml`):
+
+```bash
+openssl rand -hex 32 | gcloud secrets create tih-scheduler-token --data-file=-
+
+# let the Cloud Run service account read it
+PROJECT_NUMBER=$(gcloud projects describe "$(gcloud config get-value project)" --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding tih-scheduler-token \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role=roles/secretmanager.secretAccessor
+```
+
+**2. Create the author row.** The sync attributes essays to `AUTHOR_EMAIL` and
+refuses to run if that user is missing or has `is_author=false` — it never
+auto-creates one. Register via `POST /auth/register`, then set the flag on the
+production database.
+
+**3. Backfill the archive once** (RSS only carries the 20 most recent posts):
+
+```bash
+DATABASE_URL="postgresql+asyncpg://..." python backend/scripts/backfill_substack_archive.py --dry-run --limit 3
+DATABASE_URL="postgresql+asyncpg://..." python backend/scripts/backfill_substack_archive.py
+```
+
+**4. Schedule the hourly sync:**
+
+```bash
+gcloud scheduler jobs create http tih-substack-sync \
+  --location us-central1 \
+  --schedule "0 * * * *" \
+  --uri "https://<tih-backend-url>/stories/sync" \
+  --http-method POST \
+  --headers "X-Scheduler-Token=$(gcloud secrets versions access latest --secret=tih-scheduler-token)" \
+  --attempt-deadline 300s
+```
+
+The endpoint is idempotent — a run with nothing new returns
+`{"created":0,"updated":0,"skipped":20}` and writes nothing, so retries and
+overlapping runs are safe.
+
+**5. Optional weekly reconcile** — archives essays deleted upstream. Dry-run by
+default; aborts if the upstream corpus is empty or more than 10% of rows would be
+archived:
+
+```bash
+DATABASE_URL="postgresql+asyncpg://..." python backend/scripts/reconcile_substack.py [--apply]
 ```
 
 ## Local Development with Docker Compose

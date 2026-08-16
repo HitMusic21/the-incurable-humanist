@@ -1,9 +1,18 @@
 import SectionTitle from "@/components/SectionTitle";
 import Card from "@/components/Card";
+import SEO from "@/components/SEO";
+import SubscribeCTA from "@/components/SubscribeCTA";
+import { articleGraphForSite } from "@/lib/schema";
 
 export default function About() {
   return (
     <>
+      <SEO
+        title="About — Denise Rodriguez Dao | The Incurable Humanist"
+        description="Denise Rodriguez Dao is a writer and immigration attorney based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art."
+        canonical="https://theincurablehumanist.com/about"
+        jsonLd={articleGraphForSite({ path: "/about", pageName: "About" })}
+      />
       <SectionTitle>About</SectionTitle>
 
       <section className="container mt-10 pb-20 md:pb-28 max-w-4xl">
@@ -95,6 +104,16 @@ export default function About() {
             </p>
           </div>
         </Card>
+
+        {/* End-of-post CTA — About is prime intent-to-subscribe surface. */}
+        <div className="mt-12">
+          <SubscribeCTA
+            variant="end-of-post"
+            placement="about-footer"
+            headline="Follow Denise's writing."
+            sub="Weekly essays on grief, migration, and art. Start with the free 5-essay reader."
+          />
+        </div>
       </section>
     </>
   );

@@ -24,6 +24,15 @@ htmlcov/
 .env.*
 !.env.example
 
+# Local docker-compose overrides (host port remaps for dev — user-specific).
+docker-compose.override.yml
+
+# TypeScript incremental build info — regenerated on every build.
+frontend/tsconfig.tsbuildinfo
+
+# Local Claude workspace copies. Canonical brand docs live in /docs.
+.claude/docs/
+
 # Node / frontend
 node_modules/
 dist/

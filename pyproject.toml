@@ -14,17 +14,25 @@ combine_as_imports = true
 
 [tool.ruff]
 line-length = 100
-select = ["E","F","I","UP","B","SIM","C4"]
-ignore = ["E203","W503"]
 exclude = [
   ".git",
   "backend/venv",
   "frontend/node_modules",
 ]
 
+[tool.ruff.lint]
+select = ["E","F","I","UP","B","SIM","C4"]
+# E203: whitespace-before-punctuation (black/isort clash).
+# B008: function calls in argument defaults — FastAPI's `Depends()`, `Query()`,
+#       `Body()`, `Header()` idioms use this pervasively. Not a real defect here.
+ignore = ["E203", "B008"]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = [
   "backend/tests",
 ]
+pythonpath = ["backend"]
 addopts = "-q"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

@@ -1,194 +1,139 @@
 """
-Contract tests for Stories API endpoints.
-Tests MUST fail initially (red phase) until implementation is complete.
+Contract tests for /stories/* against the shipped Sprint 2 implementation.
+
+Was previously two files (a spec-driven skeleton + a `*_impl.py` shadow). The
+spec version specified a richer feature set (theme filtering, search,
+page-based pagination, comment/bookmark counts on list items) that never
+shipped — those endpoints belong to the deferred reader-engagement surface
+(see the skip notice in test_reader_api.py). This is now the single canonical
+stories contract test.
+
+Requires a reachable DB (docker-compose db). The autouse fixtures in
+conftest.py truncate mutable tables between tests + override get_session
+with a NullPool async engine to keep asyncpg from bleeding between loops.
 """
+
+from __future__ import annotations
+
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
 
 
+def _rand(prefix: str = "seg") -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:10]}"
+
+
 @pytest.fixture
 def client():
-    """FastAPI test client fixture."""
     from app.main import app
 
     return TestClient(app)
 
 
-class TestStoriesList:
-    """Contract tests for GET /stories endpoint."""
+@pytest.fixture
+def author_token(client) -> str:
+    """Register the author (or reuse if the row already exists) and return a token."""
+    from app.core.config import settings
 
-    def test_list_stories_success(self, client):
-        """Test listing stories returns 200 with paginated response."""
-        response = client.get("/stories")
+    email = settings.AUTHOR_EMAIL
+    password = "TestPass12345"
 
-        assert response.status_code == 200
-        data = response.json()
-
-        # Validate pagination response schema
-        assert "stories" in data
-        assert isinstance(data["stories"], list)
-        assert "total" in data
-        assert isinstance(data["total"], int)
-        assert "page" in data
-        assert isinstance(data["page"], int)
-        assert "pages" in data
-        assert isinstance(data["pages"], int)
-
-    def test_list_stories_with_theme_filter(self, client):
-        """Test filtering stories by theme."""
-        response = client.get("/stories?theme=grief")
-
-        assert response.status_code == 200
-        data = response.json()
-
-        # All returned stories should have 'grief' theme
-        for story in data["stories"]:
-            assert "themes" in story
-            # Will need actual data to verify theme matching
-
-    def test_list_stories_with_pagination(self, client):
-        """Test pagination parameters work correctly."""
-        response = client.get("/stories?page=1&limit=5")
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["page"] == 1
-        assert len(data["stories"]) <= 5
-
-    def test_list_stories_with_search(self, client):
-        """Test search across title, content, themes, author notes."""
-        response = client.get("/stories?search=grief")
-
-        assert response.status_code == 200
-        data = response.json()
-
-        # Search results should be relevant
-        assert isinstance(data["stories"], list)
-
-    def test_story_list_item_schema(self, client):
-        """Test each story in list has correct schema."""
-        response = client.get("/stories")
-
-        assert response.status_code == 200
-        stories = response.json()["stories"]
-
-        if len(stories) > 0:
-            story = stories[0]
-
-            # Validate StoryListItem schema
-            assert "id" in story
-            assert isinstance(story["id"], int)
-            assert "title" in story
-            assert isinstance(story["title"], str)
-            assert "excerpt" in story
-            assert "cover_image_url" in story  # nullable
-            assert "themes" in story
-            assert isinstance(story["themes"], list)
-            assert "read_time_minutes" in story
-            assert isinstance(story["read_time_minutes"], int)
-            assert "published_at" in story
-            assert "comment_count" in story
-            assert isinstance(story["comment_count"], int)
-            assert "bookmark_count" in story
-            assert isinstance(story["bookmark_count"], int)
+    client.post(
+        "/auth/register",
+        json={"email": email, "password": password, "full_name": "Test Author"},
+    )
+    login = client.post("/auth/login", json={"email": email, "password": password})
+    assert login.status_code == 200, login.text
+    return login.json()["access_token"]
 
 
-class TestStoryDetail:
-    """Contract tests for GET /stories/{id} endpoint."""
+class TestPublicStories:
+    def test_list_returns_shape(self, client):
+        resp = client.get("/stories")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "stories" in body and "total_count" in body
 
-    def test_get_story_success(self, client):
-        """Test getting published story by ID returns 200 with StoryDetail schema."""
-        # This assumes story with ID 1 exists
-        response = client.get("/stories/1")
-
-        # Expected to fail until stories are seeded
-        assert response.status_code in [200, 404]
-
-        if response.status_code == 200:
-            data = response.json()
-
-            # Validate StoryDetail schema
-            assert "id" in data
-            assert data["id"] == 1
-            assert "title" in data
-            assert "content" in data  # HTML content
-            assert "cover_image_url" in data
-            assert "content_warning" in data
-            assert "themes" in data
-            assert isinstance(data["themes"], list)
-
-            # Validate theme object structure
-            if len(data["themes"]) > 0:
-                theme = data["themes"][0]
-                assert "id" in theme
-                assert "name" in theme
-                assert "slug" in theme
-
-            assert "read_time_minutes" in data
-            assert "view_count" in data
-            assert "published_at" in data
-            assert "updated_at" in data
-
-            # Validate author object
-            assert "author" in data
-            assert "full_name" in data["author"]
-
-    def test_get_story_not_found(self, client):
-        """Test getting non-existent story returns 404."""
-        response = client.get("/stories/999999")
-
-        assert response.status_code == 404
-
-    def test_get_unpublished_story(self, client):
-        """Test getting draft/archived story returns 404 for public users."""
-        # This assumes story with ID 2 is draft/archived
-        response = client.get("/stories/2")
-
-        # Should be 404 if story is not published
-        assert response.status_code in [404, 200]
-
-    def test_story_view_count_increments(self, client):
-        """Test viewing a story increments view count."""
-        # First view
-        response1 = client.get("/stories/1")
-
-        if response1.status_code == 200:
-            view_count_1 = response1.json()["view_count"]
-
-            # Second view
-            response2 = client.get("/stories/1")
-            view_count_2 = response2.json()["view_count"]
-
-            # View count should increment (or stay same if caching)
-            assert view_count_2 >= view_count_1
+    def test_get_unknown_slug_404(self, client):
+        assert client.get(f"/stories/{_rand('nope')}").status_code == 404
 
 
-class TestStoriesValidation:
-    """Contract tests for request validation."""
+class TestAuthoredMutation:
+    def test_create_requires_author(self, client):
+        resp = client.post(
+            "/stories",
+            json={"title": "Anon Attempt", "content": "<p>x</p>"},
+        )
+        # HTTPBearer without a token returns 403 (not 401) — see test_auth_api
+        # for the same convention.
+        assert resp.status_code in (401, 403)
 
-    def test_invalid_theme_parameter(self, client):
-        """Test invalid theme value is rejected."""
-        response = client.get("/stories?theme=invalid_theme")
+    def test_full_crud_lifecycle(self, client, author_token):
+        headers = {"Authorization": f"Bearer {author_token}"}
+        title = f"Contract Essay {_rand('c')}"
 
-        # FastAPI should validate enum
-        assert response.status_code in [400, 422]
+        created = client.post(
+            "/stories",
+            headers=headers,
+            json={
+                "title": title,
+                "content": "<p>Body.</p>",
+                "meta_description": "meta",
+            },
+        )
+        assert created.status_code == 201, created.text
+        c = created.json()
+        assert c["slug"]  # auto-generated from title
+        assert c["status"] == "draft"
+        assert c["published_at"] is None
+        story_id = c["id"]
+        slug = c["slug"]
 
-    def test_exceed_max_limit(self, client):
-        """Test limit > 100 is rejected or clamped."""
-        response = client.get("/stories?limit=200")
+        # Draft is not publicly visible.
+        assert client.get(f"/stories/{slug}").status_code == 404
 
-        assert response.status_code in [200, 400, 422]
+        # Publish it.
+        patched = client.patch(
+            f"/stories/{story_id}",
+            headers=headers,
+            json={"status": "published"},
+        )
+        assert patched.status_code == 200
+        p = patched.json()
+        assert p["status"] == "published"
+        assert p["published_at"] is not None
 
-        if response.status_code == 200:
-            # If accepted, should be clamped to 100
-            stories = response.json()["stories"]
-            assert len(stories) <= 100
+        # Public GET now returns it + increments view_count on each read.
+        first = client.get(f"/stories/{slug}").json()
+        second = client.get(f"/stories/{slug}").json()
+        assert second["view_count"] == first["view_count"] + 1
 
-    def test_invalid_page_number(self, client):
-        """Test negative or zero page number handling."""
-        response = client.get("/stories?page=0")
+        # Delete.
+        assert client.delete(f"/stories/{story_id}", headers=headers).status_code == 204
+        assert client.get(f"/stories/{slug}").status_code == 404
 
-        # Should reject or default to page 1
-        assert response.status_code in [200, 400, 422]
+    def test_slug_collision_gets_suffix(self, client, author_token):
+        headers = {"Authorization": f"Bearer {author_token}"}
+        title = f"Same Title {_rand('s')}"
+        first = client.post(
+            "/stories", headers=headers, json={"title": title, "content": "<p>a</p>"}
+        ).json()
+        second = client.post(
+            "/stories", headers=headers, json={"title": title, "content": "<p>b</p>"}
+        ).json()
+        assert first["slug"] != second["slug"]
+        assert second["slug"].startswith(first["slug"] + "-")
+
+    def test_admin_get_by_id_returns_drafts(self, client, author_token):
+        """Public GET /stories/{slug} hides drafts (404). Admin GET /stories/id/{id}
+        returns them — that's how the editor hydrates a draft."""
+        headers = {"Authorization": f"Bearer {author_token}"}
+        created = client.post(
+            "/stories", headers=headers, json={"title": _rand("d"), "content": "<p>d</p>"}
+        ).json()
+        assert client.get(f"/stories/{created['slug']}").status_code == 404
+        resp = client.get(f"/stories/id/{created['id']}", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["slug"] == created["slug"]

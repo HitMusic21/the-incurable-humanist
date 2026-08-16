@@ -6,32 +6,26 @@ The Incurable Humanist - Personal Publication Platform
 import logging
 import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-from app.api import auth, newsletter
-from app.core.database import db_ping
+from app.api import auth, leads, newsletter, stories
+from app.core.database import db_ping, init_db
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
+# Basic logging configuration (can be overridden by server)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup: Do not block on database connection
-    logger.info("Starting application...")
-    logger.info("Application startup complete (DB connection not required for startup)")
+    # Startup: Initialize database
+    await init_db()
     yield
     # Shutdown: cleanup if needed
-    logger.info("Application shutting down...")
 
 
 app = FastAPI(
@@ -42,7 +36,6 @@ app = FastAPI(
 )
 
 # CORS configuration for frontend
-import os
 allowed_origins = [
     "http://localhost:5173",  # Vite dev server
     "https://theincurablehumanist.com",
@@ -62,47 +55,31 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
-async def health():
-    """
-    Liveness check endpoint (no DB dependency).
-    Used by Railway for liveness checks - MUST NOT query database.
-    """
-    return {"ok": True}
+@app.get("/")
+async def root():
+    """Health check endpoint."""
+    return {"message": "The Incurable Humanist API is running"}
 
 
 @app.get("/ready")
-async def ready():
-    """
-    Readiness check endpoint with database connectivity verification.
-    Used by Railway for readiness checks before routing traffic.
-    """
-    return {"db": await db_ping()}
+async def ready() -> Response:
+    """Readiness endpoint verifying database connectivity."""
+    is_db_ready = await db_ping()
+    if is_db_ready:
+        return Response(status_code=status.HTTP_200_OK)
+    return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-@app.get("/api")
-async def api_root():
-    """API root endpoint."""
-    return {
-        "message": "The Incurable Humanist API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health",
-        "ready": "/ready"
-    }
+# Rate-limiter state (used by app.api.leads via slowapi's @limiter.limit decorators).
+# Must be attached to app.state so slowapi's request middleware can find it.
+app.state.limiter = leads.limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-
-# Include API routers
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(newsletter.router, prefix="/api/newsletter", tags=["Newsletter"])
+# Include routers
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(newsletter.router, prefix="/newsletter", tags=["Newsletter"])
+app.include_router(leads.router, prefix="/leads", tags=["Leads"])
+app.include_router(stories.router, prefix="/stories", tags=["Stories"])
 
 # TODO: Include other routers when implemented
-# app.include_router(stories.router, prefix="/api/stories", tags=["Stories"])
-# app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
-
-# Serve static frontend files (production only)
-# In production, the frontend is built and available in frontend/dist
-frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
-if frontend_dist.exists():
-    # Mount API routes first, then catch-all static files
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="static")
+# app.include_router(admin.router, prefix="/admin", tags=["Admin"])

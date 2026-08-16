@@ -8,6 +8,21 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # Postgres available for contract tests — same version as prod (postgres:16).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tih_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,8 +40,10 @@ jobs:
       - name: Tests (pytest)
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/tih_db
-        run: |
-          python -m pytest -q || true
+          DB_SSL: disable
+          # Auth fails closed without this; contract tests exercise login/register.
+          SECRET_KEY: test-secret-not-used-in-prod
+        run: python -m pytest -q
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -44,7 +61,7 @@ jobs:
         run: npm run typecheck
       - name: Lint
         working-directory: frontend
-        run: npm run lint || true
+        run: npm run lint
       - name: Tests
         working-directory: frontend
         run: npm run test
