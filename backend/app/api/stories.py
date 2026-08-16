@@ -7,9 +7,11 @@ same note in app/api/leads.py for the FastAPI+Pydantic+slowapi rationale.
 """
 
 import logging
+import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,15 +22,35 @@ from app.api.schemas import (
     StoryPublic,
     StoryUpdate,
 )
+from app.core.config import settings
 from app.core.database import get_session
 from app.models.story import Story, StoryStatus
 from app.models.user import User
 from app.services.auth import get_current_author
 from app.services.slugify import ensure_unique_slug, slugify
+from app.services.substack_sync import resolve_author, sync_from_feed
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class SyncResponse(BaseModel):
+    created: int
+    updated: int
+    skipped: int
+    errors: list[str] = []
+
+
+def _verify_scheduler_token(header_value: str | None) -> None:
+    """Header-based auth for the sync endpoint. Rejects if SCHEDULER_TOKEN is
+    unset (never accept unauth in prod) or if the header doesn't match."""
+    expected = settings.SCHEDULER_TOKEN
+    if not expected:
+        logger.error("Sync request rejected: SCHEDULER_TOKEN is not configured.")
+        raise HTTPException(status_code=503, detail="Sync scheduler not configured.")
+    if not header_value or not secrets.compare_digest(header_value, expected):
+        raise HTTPException(status_code=401, detail="Invalid scheduler token.")
 
 
 def _coerce_status(raw: str | None) -> StoryStatus | None:
@@ -96,6 +118,42 @@ async def get_story_by_id(
     if row is None:
         raise HTTPException(status_code=404, detail="Story not found")
     return StoryDetail.model_validate(row)
+
+
+@router.post("/sync", response_model=SyncResponse)
+async def sync_substack(
+    x_scheduler_token: str | None = Header(default=None, alias="X-Scheduler-Token"),
+    session: AsyncSession = Depends(get_session),
+) -> SyncResponse:
+    """
+    Pull the ~20 posts Substack exposes over RSS and upsert them as stories.
+
+    Cloud Scheduler hits this hourly. Idempotent: posts whose text is unchanged
+    are skipped, so a typical run writes nothing. Declared above GET /{slug}
+    purely for readability — the methods differ, so there is no route conflict.
+    """
+    _verify_scheduler_token(x_scheduler_token)
+
+    try:
+        author = await resolve_author(session, settings.AUTHOR_EMAIL)
+    except RuntimeError as exc:
+        # Misconfiguration, not a client error — the author row must exist first.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        result = await sync_from_feed(session, author_id=author.id)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001 - upstream feed/network failure
+        logger.exception("sync_substack failed")
+        raise HTTPException(status_code=503, detail=f"Substack sync failed: {exc}") from exc
+
+    return SyncResponse(
+        created=result.created,
+        updated=result.updated,
+        skipped=result.skipped,
+        errors=result.errors,
+    )
 
 
 @router.get("/{slug}", response_model=StoryDetail)

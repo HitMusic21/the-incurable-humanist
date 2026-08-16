@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Card from "@/components/Card";
 import SectionTitle from "@/components/SectionTitle";
-import NewsletterArticleCard from "@/components/NewsletterArticleCard";
 import PressItemCard from "@/components/PressItemCard";
 import SubscribeCTA from "@/components/SubscribeCTA";
 import SEO from "@/components/SEO";
@@ -12,18 +11,15 @@ import { articleGraphForSite, articleNode } from "@/lib/schema";
 import { withUTM } from "@/lib/utm";
 import { useAnalytics } from "@/hooks/useAnalytics";
 
-type SubstackArticle = {
-  title: string;
-  link: string;
-  description: string;
-  published: string;
-};
+// How many essays to show before the "Load more" control. The full corpus is
+// ~71 rows — small enough to fetch in one request and slice client-side.
+const PAGE_SIZE = 12;
 
 function useOnSiteEssays() {
   const [stories, setStories] = useState<StoryPublic[]>([]);
   useEffect(() => {
     let alive = true;
-    fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.stories.list}?status=published&limit=20`)
+    fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.stories.list}?status=published&limit=100`)
       .then((r) => (r.ok ? r.json() : { stories: [] }))
       .then((data) => {
         if (!alive) return;
@@ -37,52 +33,21 @@ function useOnSiteEssays() {
   return stories;
 }
 
-function useSubstackFeed() {
-  const [articles, setArticles] = useState<SubstackArticle[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.newsletter.articles}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Feed responded ${r.status}`);
-        return r.json();
-      })
-      .then((data) => {
-        if (!alive) return;
-        // Backend returns { articles: [], total_count }.
-        const list = Array.isArray(data?.articles) ? data.articles : [];
-        setArticles(list);
-      })
-      .catch((e) => {
-        if (!alive) return;
-        setError(e instanceof Error ? e.message : "unknown");
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  return { articles, error };
+function formatDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
 export default function Archive() {
-  const { articles, error } = useSubstackFeed();
   const onSiteEssays = useOnSiteEssays();
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const { track, events } = useAnalytics();
 
-  const feedJsonLd =
-    articles && articles.length > 0
-      ? articles.slice(0, 10).map((a) =>
-          articleNode({
-            title: a.title,
-            url: a.link,
-            description: a.description,
-            published: a.published,
-          })
-        )
-      : [];
-
+  // Essays are hosted here now, so every Article node points on-site. The old
+  // Substack-feed nodes were removed with the feed itself — advertising
+  // off-site URLs for content we host would undercut our own canonical.
   const onSiteJsonLd = onSiteEssays.slice(0, 10).map((s) =>
     articleNode({
       title: s.title,
@@ -98,12 +63,11 @@ export default function Archive() {
     <>
       <SEO
         title="Archive — The Incurable Humanist"
-        description="A curated archive of essays by Denise Rodriguez Dao on grief, migration, and art. Start with the four essays that most fully express the work; then browse recent pieces from Substack."
+        description="A curated archive of essays by Denise Rodriguez Dao on grief, migration, and art. Start with the essays that most fully express the work, then read the full collection."
         canonical="https://theincurablehumanist.com/archive"
         jsonLd={[
           ...articleGraphForSite({ path: "/archive", pageName: "Archive" }),
           ...onSiteJsonLd,
-          ...feedJsonLd,
         ]}
       />
 
@@ -128,35 +92,65 @@ export default function Archive() {
         />
       </section>
 
-      {/* On-site essays — appears only when there's something to show. */}
+      {/*
+        Every essay, hosted here. Previously this section sat below a "Recent
+        from Substack" list that linked away; the essays are now synced on-site,
+        so the outbound list is gone and this is the primary reading surface.
+      */}
       {onSiteEssays.length > 0 && (
         <section className="container mt-16 max-w-5xl">
           <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
             Essays
           </h2>
           <div className="grid gap-6 md:grid-cols-2">
-            {onSiteEssays.slice(0, 12).map((s) => (
-              <Card key={s.slug} className="p-6 md:p-8 hover:shadow-[0_16px_40px_rgba(110,85,128,0.12)] transition-shadow">
-                <Link
-                  to={`/essays/${s.slug}`}
-                  onClick={() =>
-                    track(events.ESSAY_CLICK, {
-                      slug: s.slug,
-                      placement: "archive-onsite",
-                    })
-                  }
-                  className="font-serif text-[22px] md:text-[24px] text-ink hover:text-accent transition-colors leading-tight block"
+            {onSiteEssays.slice(0, visible).map((s) => {
+              const published = formatDate(s.published_at);
+              return (
+                <Card
+                  key={s.slug}
+                  className="p-6 md:p-8 hover:shadow-[0_16px_40px_rgba(110,85,128,0.12)] transition-shadow"
                 >
-                  {s.title}
-                </Link>
-                {s.excerpt && (
-                  <p className="mt-3 text-[15px] text-muted-ink leading-relaxed">
-                    {s.excerpt}
-                  </p>
-                )}
-              </Card>
-            ))}
+                  {(published || s.read_time_minutes) && (
+                    <div className="font-serif text-[15px] italic text-accent/80 mb-2">
+                      {published}
+                      {published && s.read_time_minutes ? " · " : ""}
+                      {s.read_time_minutes ? `${s.read_time_minutes} min read` : ""}
+                    </div>
+                  )}
+                  <Link
+                    to={`/essays/${s.slug}`}
+                    onClick={() =>
+                      track(events.ESSAY_CLICK, {
+                        slug: s.slug,
+                        placement: "archive-onsite",
+                      })
+                    }
+                    className="font-serif text-[22px] md:text-[24px] text-ink hover:text-accent transition-colors leading-tight block"
+                  >
+                    {s.title}
+                  </Link>
+                  {s.excerpt && (
+                    <p className="mt-3 text-[15px] text-muted-ink leading-relaxed">{s.excerpt}</p>
+                  )}
+                </Card>
+              );
+            })}
           </div>
+
+          {visible < onSiteEssays.length && (
+            <div className="mt-10 text-center">
+              <button
+                type="button"
+                onClick={() => setVisible((n) => n + PAGE_SIZE)}
+                className="inline-flex h-12 items-center rounded-pill border border-line bg-surface px-6 font-medium text-ink transition-colors hover:border-accent/40 hover:text-accent cursor-pointer whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                Load more essays
+                <span className="ml-2 text-muted-ink">
+                  ({onSiteEssays.length - visible} more)
+                </span>
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -206,51 +200,6 @@ export default function Archive() {
           headline="Read the next one in your inbox."
           sub="Weekly, on Sunday mornings. Grief, migration, art. Free."
         />
-      </section>
-
-      {/* Recent from Substack */}
-      <section className="container mt-16 max-w-5xl">
-        <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
-          Recent essays
-        </h2>
-        {error && (
-          <p className="text-center text-[15px] text-muted-ink">
-            The live feed is temporarily unavailable. Read the latest directly on{" "}
-            <a
-              href={withUTM(SITE.substackUrl, {
-                source: "website",
-                medium: "referral",
-                campaign: "archive-feed-fallback",
-              })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent underline underline-offset-2"
-            >
-              Substack
-            </a>
-            .
-          </p>
-        )}
-        {!articles && !error && (
-          <p className="text-center text-[15px] text-muted-ink">Loading…</p>
-        )}
-        {articles && articles.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2">
-            {articles.slice(0, 8).map((a) => (
-              <NewsletterArticleCard
-                key={a.link}
-                title={a.title}
-                link={withUTM(a.link, {
-                  source: "website",
-                  medium: "referral",
-                  campaign: "archive-recent",
-                })}
-                description={a.description}
-                published={a.published}
-              />
-            ))}
-          </div>
-        )}
       </section>
 
       {/* In the press */}

@@ -51,6 +51,10 @@ export type StoryPublic = {
   meta_description: string | null;
   cover_image_url: string | null;
   canonical_url: string | null;
+  // Substack permalink this essay was synced from. Drives the "first published
+  // on Substack" credit line — NOT the canonical URL, which stays on-site.
+  source_url: string | null;
+  read_time_minutes: number | null;
   status: string;
   published_at: string | null;
   updated_at: string;

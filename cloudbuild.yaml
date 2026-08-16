@@ -3,6 +3,9 @@ substitutions:
   _SERVICE_BACKEND: tih-backend
   _SERVICE_FRONTEND: tih-frontend
   _REPO_NAME: the-incurable-humanist
+  # Author the Substack sync attributes imported essays to. Must match a User
+  # row with is_author=true, or the sync fails closed with a 503.
+  _AUTHOR_EMAIL: denise@theincurablehumanist.com
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -32,7 +35,16 @@ steps:
         '--region','${_REGION}',
         '--platform','managed',
         '--allow-unauthenticated',
-        '--set-env-vars','PYTHONUNBUFFERED=1'
+        # --update-env-vars MERGES; --set-env-vars REPLACES the whole set.
+        # DATABASE_URL / SENDGRID_API_KEY are configured out-of-band (see
+        # GCP_DEPLOYMENT.md), so --set-env-vars here would wipe them on every
+        # deploy. Do not switch this back.
+        '--update-env-vars','PYTHONUNBUFFERED=1,AUTHOR_EMAIL=${_AUTHOR_EMAIL}',
+        # SCHEDULER_TOKEN guards POST /stories/sync. Kept in Secret Manager
+        # rather than inline: it is a bearer credential, and the endpoint
+        # fails closed with 503 when it is unset, so a missing secret disables
+        # the Substack sync silently rather than exposing it.
+        '--update-secrets','SCHEDULER_TOKEN=tih-scheduler-token:latest'
       ]
 
   # Deploy frontend to Cloud Run

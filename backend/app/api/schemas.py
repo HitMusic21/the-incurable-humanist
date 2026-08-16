@@ -113,6 +113,10 @@ class StoryPublic(BaseModel):
     meta_description: str | None
     cover_image_url: str | None
     canonical_url: str | None
+    # Substack permalink this row was synced from. Drives the "first published
+    # on Substack" credit line — NOT the canonical URL, which stays on-site.
+    source_url: str | None = None
+    read_time_minutes: int | None = None
     status: str
     published_at: datetime | None
     updated_at: datetime

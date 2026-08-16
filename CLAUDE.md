@@ -39,7 +39,16 @@ cd frontend && npx vitest run src/components/__tests__/AppSmoke.test.tsx  # sing
 
 ### Alembic Migrations
 
-Alembic is configured (`backend/alembic.ini`, `backend/alembic/env.py`) with `target_metadata = SQLModel.metadata`. Migrations live in `backend/alembic/versions/` (currently empty — schema is auto-created at app startup via `init_db()`, see architecture notes).
+Alembic is configured (`backend/alembic.ini`, `backend/alembic/env.py`) with `target_metadata = SQLModel.metadata`. `backend/alembic/versions/` holds a linear chain — head is **`0005_story_sync_fields`**. Note `0001_baseline` is an intentional no-op: the chain assumes tables already exist from `init_db()`'s `create_all`, so every migration is written inspect-first and no-ops when a column or index is already there.
+
+**On a brand-new database**, run the app once (or `init_db()`) to create the tables, then `alembic stamp head`. Running `alembic upgrade head` against a truly empty DB fails with `NoSuchTableError` — the migrations alter tables, they don't create them.
+
+Alembic needs the **async** URL. A `postgresql://` URL fails with *"The asyncio extension requires an async driver"*:
+
+```bash
+DATABASE_URL='postgresql+asyncpg://postgres:postgres@localhost:5433/tih_dev' \
+  alembic -c backend/alembic.ini upgrade head
+```
 
 ```bash
 alembic -c backend/alembic.ini revision --autogenerate -m "message"
@@ -67,7 +76,32 @@ models/              # SQLModel tables — User, Story, Theme, StoryTheme, Comme
                      #   Bookmark, ReadingProgress, NewsletterSubscription
 ```
 
-Routers are mounted with prefixes in `main.py` (`/auth`, `/newsletter`). Additional routers (`stories`, `admin`) are stubbed as TODOs.
+Routers are mounted with prefixes in `main.py` (`/auth`, `/newsletter`, `/leads`, `/stories`). The `admin` router is still a TODO.
+
+### Substack → on-site essay sync
+
+Essays are authored on Substack and mirrored into the `story` table, so `/essays/{slug}` is the canonical reading surface. `app/services/substack_sync.py` is the single code path — the scheduled endpoint, the backfill and the reconciler all call `upsert_entry`.
+
+```bash
+# one-shot: import the full archive (~71 posts, ~2 min at 1.5s pacing)
+python backend/scripts/backfill_substack_archive.py --dry-run --limit 3   # inspect first
+python backend/scripts/backfill_substack_archive.py
+
+# ongoing: hourly via Cloud Scheduler (RSS carries only the 20 most recent)
+curl -X POST $BACKEND/stories/sync -H "X-Scheduler-Token: $SCHEDULER_TOKEN"
+
+# weekly: archive posts deleted upstream (dry-run by default)
+python backend/scripts/reconcile_substack.py [--apply]
+```
+
+Four behaviours are load-bearing and were each derived from probing the live feed. Don't "simplify" them away:
+
+1. **`/api/v1/archive` ignores `limit` above ~23.** Step `offset` by `len(response)`, never by the requested size — stepping by 50 silently yields 44 of 71 and then a convincing empty page.
+2. **`content_hash` covers normalized text, not markup.** RSS emits a bare `<img>`; the JSON API emits `<picture>` + `srcset` for the same prose. Hashing markup makes the two sources disagree forever, so every hourly sync would rewrite every row.
+3. **`content_source` (`api`/`rss`) stops RSS downgrading images.** On a genuine edit of an `api` row, the RSS path re-fetches the API body rather than storing RSS's poorer markup.
+4. **Reconcile archives, never deletes**, uses the full archive corpus as authority (not the 20-item feed), and aborts if the corpus is empty or >10% of rows would be archived.
+
+`source_url` (provenance, the sync's idempotency key) is deliberately distinct from `canonical_url` (SEO). Synced rows leave `canonical_url` NULL so the on-site page is canonical; `EssayDetail.tsx` prefers `canonical_url` whenever it's set, so populating both would silently de-index the essay. Remote HTML is allowlist-sanitized on ingest via `app/services/html_sanitize.py` (`nh3`) — never on render.
 
 ### Database lifecycle — important
 
@@ -193,7 +227,30 @@ Browser cache: after a rebuild, hard-reload the browser (Cmd+Shift+R) or DevTool
 
 ## Testing
 
-- **Backend**: `pytest` with `pytest-asyncio`. Testpaths pinned to `backend/tests` in `pyproject.toml`. Structure: `tests/contract/` (API contract tests), `tests/integration/`, `tests/unit/`. `conftest.py` intentionally does nothing — tables are created by the app's lifespan when it starts. Contract tests currently expect a running app / DB; CI runs `pytest -q || true` so failures don't block.
+- **Backend**: `pytest` with `pytest-asyncio`. Testpaths pinned to `backend/tests` in `pyproject.toml`. Structure: `tests/contract/` (API contract tests), `tests/integration/`, `tests/unit/`. Contract tests expect a reachable Postgres; CI runs `pytest -q || true` so failures don't block.
+
+### ⚠ The test suite TRUNCATES its database
+
+`backend/tests/conftest.py` has an autouse fixture that runs `TRUNCATE ... RESTART IDENTITY CASCADE` over `_TRUNCATE_TABLES` (`story`, `user`, `lead_capture`, …) **between every test**. Point it at a database holding real content and that content is gone — including the author row the Substack backfill depends on.
+
+Use two databases on the same container:
+
+| DB | Purpose | `DATABASE_URL` |
+|---|---|---|
+| `tih_db` | **tests only** — truncated constantly | `postgresql+asyncpg://postgres:postgres@localhost:5433/tih_db` |
+| `tih_dev` | local dev content (the 71 synced essays) | `postgresql+asyncpg://postgres:postgres@localhost:5433/tih_dev` |
+
+```bash
+# tests — safe to wipe
+DATABASE_URL='postgresql+asyncpg://postgres:postgres@localhost:5433/tih_db' pytest -q
+
+# dev server — keeps its data
+DATABASE_URL='postgresql://postgres:postgres@localhost:5433/tih_dev' \
+  DB_SSL=disable SCHEDULER_TOKEN=dev-tick-token \
+  uvicorn app.main:app --app-dir backend --port 8000
+```
+
+If a new model is added, add its table to `_TRUNCATE_TABLES` or rows leak between tests.
 - **Frontend**: `vitest` with jsdom + Testing Library (`vitest.config.ts`, `vitest.setup.ts`). Tests live in `src/**/__tests__/`.
 
 ## CI (`.github/workflows/ci.yml`)

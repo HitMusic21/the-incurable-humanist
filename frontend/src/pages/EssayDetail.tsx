@@ -145,6 +145,9 @@ export default function EssayDetail() {
               Archive
             </Link>
             {publishedLabel && <span className="text-muted-ink"> · {publishedLabel}</span>}
+            {story.read_time_minutes && (
+              <span className="text-muted-ink"> · {story.read_time_minutes} min read</span>
+            )}
           </div>
           <h1 className="font-serif text-accent2 text-[36px] md:text-[48px] leading-[1.1]">
             {story.title}
@@ -179,11 +182,16 @@ export default function EssayDetail() {
           dangerouslySetInnerHTML={{ __html: story.content }}
         />
 
-        {story.canonical_url && (
+        {/*
+          Credit line reads source_url, not canonical_url: the on-site page is
+          canonical (so this essay is what search engines index), and source_url
+          records where it first appeared.
+        */}
+        {(story.source_url || story.canonical_url) && (
           <p className="mt-10 max-w-[62ch] mx-auto text-[13px] text-muted-ink italic">
             This essay was first published on{" "}
             <a
-              href={story.canonical_url}
+              href={story.source_url || story.canonical_url || undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 hover:text-accent"
