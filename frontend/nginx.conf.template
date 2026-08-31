@@ -43,6 +43,13 @@ http {
     }
 
     location / {
+      # The build emits real directories (archive/, about/, speak/, listen/),
+      # so `$uri/` matches and nginx issues a canonical trailing-slash 301.
+      # Without this, that redirect is absolute and rebuilds the URL from the
+      # *container-internal* listen port — e.g. /archive on a host-published
+      # :5180 redirects to http://localhost:8080/archive/, which refuses the
+      # connection. Relative redirects keep the client's original host:port.
+      absolute_redirect off;
       try_files $uri $uri/ /index.html;
     }
 

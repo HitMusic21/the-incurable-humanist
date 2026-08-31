@@ -19,6 +19,9 @@ make be-run                                                       # uvicorn app.
 make be-test                                                      # pytest -q (testpaths=backend/tests)
 make be-lint                                                      # ruff check backend && flake8 backend
 make be-format                                                    # black backend && isort backend
+make tick                                                         # fire the welcome-sequence scheduler locally
+                                                                  #   POST $BACKEND_URL/leads/sequence/tick
+                                                                  #   defaults: BACKEND_URL=:8010, SCHEDULER_TOKEN=dev-tick-token
 
 pytest backend/tests/contract/test_auth_api.py -q                 # run a single test file
 pytest backend/tests/contract/test_auth_api.py::test_name -q      # run a single test
@@ -35,6 +38,13 @@ make fe-lint        # eslint .
 make fe-typecheck   # tsc --noEmit
 
 cd frontend && npx vitest run src/components/__tests__/AppSmoke.test.tsx  # single test
+```
+
+### Aggregate gates (run before committing)
+
+```bash
+make lint    # be-lint + fe-lint
+make test    # be-test + fe-test
 ```
 
 ### Alembic Migrations
@@ -69,14 +79,24 @@ docker compose up --build   # db, backend, frontend (see port note below)
 
 ```
 main.py              # FastAPI entry, lifespan → init_db(), CORS, router mounts
-api/                 # HTTP layer — auth.py, newsletter.py, schemas.py (Pydantic)
-services/            # business logic — auth.py (register/authenticate/token)
-core/                # cross-cutting — database.py, config.py, settings.py, security.py
+api/                 # HTTP layer — auth.py, newsletter.py, leads.py, stories.py,
+                     #   schemas.py (Pydantic)
+services/            # business logic — auth.py, email.py, substack_sync.py,
+                     #   html_sanitize.py, sendgrid_webhook.py, posthog_server.py, slugify.py
+core/                # cross-cutting — database.py, config.py, db_url.py, security.py
 models/              # SQLModel tables — User, Story, Theme, StoryTheme, Comment,
-                     #   Bookmark, ReadingProgress, NewsletterSubscription
+                     #   Bookmark, ReadingProgress, NewsletterSubscription,
+                     #   LeadCapture, LeadEvent
 ```
 
-Routers are mounted with prefixes in `main.py` (`/auth`, `/newsletter`, `/leads`, `/stories`). The `admin` router is still a TODO.
+Routers are mounted with prefixes in `main.py` (`/auth`, `/newsletter`, `/leads`, `/stories`). There is **no separate `admin` router** — the admin surface lives on the `stories` router and is distinguished by method, not prefix:
+
+| Public | Admin (bearer token) |
+|---|---|
+| `GET /stories`, `GET /stories/{slug}` | `GET /stories/id/{id}` |
+| `POST /stories/sync` (scheduler token) | `POST /stories`, `PATCH /stories/{id}`, `DELETE /stories/{id}` |
+
+Route order in `stories.py` is load-bearing: `/id/{story_id}` and `/sync` are declared **before** `/{slug}`, or FastAPI matches the literal segments as a slug.
 
 ### Substack → on-site essay sync
 
@@ -109,7 +129,7 @@ Four behaviours are load-bearing and were each derived from probing the live fee
 
 ### DATABASE_URL normalization
 
-`app.core.settings.normalize_database_url` runs at import time on the `DATABASE_URL` env var. It:
+`app.core.db_url.normalize_database_url` runs at import time on the `DATABASE_URL` env var. It:
 - Rewrites `postgres://` → `postgresql://`
 - Injects the `+asyncpg` driver
 - Converts `sslmode=` → `ssl=` (asyncpg uses `ssl`, not `sslmode`)
@@ -122,9 +142,13 @@ Don't hand-craft the URL with `sslmode` or without `+asyncpg` — the normalizer
 ```
 main.tsx             # entry — createBrowserRouter, PostHogProvider wraps RouterProvider
 shell/App.tsx        # layout shell (Outlet), applied to all routes EXCEPT /links
-pages/               # route components — Home, About, Archive, Speak, Listen, Links, NotFound
+pages/               # route components — Home, About, Archive, EssayDetail, Speak,
+                     #   TopicLanding, Listen, Subscribed, Links, NotFound
+pages/admin/         # Login, StoriesIndex, StoryEditor (bearer-token CRUD surface)
 components/          # reusable UI + __tests__/ (vitest + Testing Library)
                      #   incl. SEO, ConsentBanner, SubscribeCTA, PillButton, SocialIconButton
+hooks/               # useAnalytics, useScrollDepth
+data/                # speakingTopics.mjs (+ .d.mts) — drives /speak/:topic landing pages
 lib/                 # cross-cutting client utilities
   analytics.ts       #   PostHog + GA4 + Meta/TikTok pixels — all consent-gated
   schema.ts          #   JSON-LD @graph builders consumed by <SEO jsonLd={...}/>
@@ -133,10 +157,13 @@ config/api.ts        # API base URL resolution (env-aware) + endpoint map + type
 config/site.ts       # site-wide branding / nav / social config
 ```
 
-Routing is centralized in `main.tsx` (React Router v6 data router). Two structural rules:
+Routing is centralized in `main.tsx` (React Router v6 data router). Three structural rules:
 
 - **`/links` sits outside `<App />`** — it's a bio-link landing page with no shell chrome and is intentionally hidden from nav + sitemap. Don't add it to the shell's children.
-- **Retired routes redirect, they do not 404.** `/newsletter` → `/`, `/press` → `/archive`, `/contact` → `/speak`. Preserve these `<Navigate replace>` entries when reshaping routes — they protect inbound link equity and ad landing pages.
+- **Retired routes redirect, they do not 404.** `/newsletter` → `/`, `/press` → `/archive`, `/contact` → `/speak`, `/essays` → `/archive`, `/admin` → `/admin/stories`. Preserve these `<Navigate replace>` entries when reshaping routes — they protect inbound link equity and ad landing pages.
+- **`/essays/:slug` is canonical; `/archive/:slug` is a legacy alias.** Both render `EssayDetail`. Keep the alias — old inbound links use it — but never emit `/archive/:slug` in nav, sitemaps, or JSON-LD.
+
+`/admin/*` renders inside `<App />` behind a bearer token stored client-side (`AdminLogin` → `/auth/login`). It is intentionally absent from nav and sitemap.
 
 PostHog is initialized once at the provider and uses `VITE_PUBLIC_POSTHOG_KEY` / `VITE_PUBLIC_POSTHOG_HOST`.
 
@@ -161,6 +188,8 @@ When adding a new tracked event, add it to `ANALYTICS_EVENTS` in `lib/analytics.
 3. `http://localhost:8000` in dev (Vite dev server hits the backend directly, no proxy)
 
 Endpoint strings in `API_CONFIG.endpoints` are prefix-free (`/leads/subscribe`, `/auth/login`, etc.). The prod `/api` prefix is added by the base URL. Nginx strips it via `rewrite ^/api/(.*)$ /$1 break;` before proxying.
+
+`config/api.ts` also exports the server-side story shapes (`StoryPublic`, `StoryDetail`, `StoryListResponse`). Keep these in sync with `app/api/schemas.py` — they're hand-mirrored, not generated.
 
 The frontend container reads `BACKEND_URL` at boot (envsubst renders `nginx.conf.template`). In Cloud Run: `--set-env-vars BACKEND_URL=https://tih-backend-xyz.a.run.app`. In docker-compose: pinned to `http://backend:8000` in `frontend/Dockerfile` default.
 
@@ -227,7 +256,7 @@ Browser cache: after a rebuild, hard-reload the browser (Cmd+Shift+R) or DevTool
 
 ## Testing
 
-- **Backend**: `pytest` with `pytest-asyncio`. Testpaths pinned to `backend/tests` in `pyproject.toml`. Structure: `tests/contract/` (API contract tests), `tests/integration/`, `tests/unit/`. Contract tests expect a reachable Postgres; CI runs `pytest -q || true` so failures don't block.
+- **Backend**: `pytest` with `pytest-asyncio`. Testpaths pinned to `backend/tests` in `pyproject.toml`. Structure: `tests/contract/` (API contract tests — auth, leads, stories, admin, substack sync, webhooks), `tests/unit/` (currently `test_html_sanitize.py`). Contract tests expect a reachable Postgres; CI runs `pytest -q || true` so failures don't block.
 
 ### ⚠ The test suite TRUNCATES its database
 

@@ -80,7 +80,19 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="mt-12 pt-8 border-t border-line text-center text-[14px] text-muted-ink">
-          <p>© {new Date().getFullYear()} {SITE.hero.byline.replace('By ', '')}. All rights reserved.</p>
+          {/* Privacy sits here rather than in SITE.nav — that array also drives
+              the header, and privacy is a footer-tier link, not primary nav. */}
+          <p>
+            © {new Date().getFullYear()} {SITE.hero.byline.replace('By ', '')}. All rights
+            reserved.{' '}
+            <span className="mx-1 text-line" aria-hidden="true">·</span>{' '}
+            <Link
+              to="/privacy"
+              className="underline underline-offset-4 hover:text-accent transition focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded"
+            >
+              Privacy
+            </Link>
+          </p>
         </div>
       </div>
     </footer>

@@ -29,7 +29,8 @@ export default function Speak() {
       <section className="container mt-8 max-w-4xl">
         <p className="text-center text-[16px] md:text-[17px] italic text-muted-ink max-w-2xl mx-auto leading-relaxed">
           {/* AEO-quotable intro paragraph. */}
-          Denise Rodriguez Dao is a writer and immigration attorney based in New York. She
+          Denise Rodriguez Dao is a writer and business immigration consultant based in New
+          York. She
           speaks on grief, migration, art, and the Latin American diaspora — for cultural
           centers, literary festivals, universities, and diaspora-adjacent events.
         </p>
@@ -192,9 +193,9 @@ export default function Speak() {
           <div className="space-y-4 text-[16px] md:text-[17px] leading-relaxed">
             <p>
               Denise Rodriguez Dao is the writer behind <em>The Incurable Humanist</em>, a
-              weekly newsletter on grief, migration, and art. She is a foreign attorney at a
-              boutique immigration law firm in Manhattan, where she secures visas for artists,
-              gallerists, entrepreneurs, and cultural professionals.
+              weekly newsletter on grief, migration, and art. She is a business immigration
+              consultant working with artists, gallerists, entrepreneurs, and cultural
+              professionals across art and entertainment.
             </p>
             <p>
               She previously served as content director, head of logistics, and artist liaison

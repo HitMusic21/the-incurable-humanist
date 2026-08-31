@@ -21,9 +21,19 @@
     />
     <meta name="robots" content="index, follow" />
 
-    <!-- Google Search Console verification.
-         TODO(setup): replace the value below with the token from https://search.google.com/search-console -->
-    <meta name="google-site-verification" content="REPLACE_WITH_GSC_TOKEN" />
+    <!-- Google Search Console verification. This value mirrors the
+         google-site-verification TXT record already live on the Cloudflare DNS
+         zone, so the property is verified by both the DNS and HTML-tag methods.
+         Do not change it without updating that TXT record too. -->
+    <meta name="google-site-verification" content="3qSoTc0HhzXYVV7ZT2a9fIC-CDuNBjbztLqk0SO0dJw" />
+
+    <!-- Preload the homepage hero, which is the LCP element. Without this the
+         browser only discovers it after fetching and parsing the JS bundle,
+         because the <img> lives inside the React tree. Measured mobile LCP was
+         5.4s with the image discovered late. Harmless on other routes: it is a
+         242KB request the browser drops if unused, and every route shares this
+         one index.html shell. -->
+    <link rel="preload" as="image" href="/founder.jpg" fetchpriority="high" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -80,7 +90,12 @@
     <!-- Sitewide JSON-LD (@graph: Person + WebSite).
          Article schema is added per-page via the SEO component.
          Server-rendered here so Google + AI Overviews can read it without executing JS. -->
-    <script type="application/ld+json">
+    <!-- id must match JSONLD_ID in src/components/SEO.tsx. Without it, SEO.tsx's
+         getElementById lookup misses this block and APPENDS a second <script>,
+         so every page shipped two JSON-LD graphs with two WebSite nodes whose
+         @ids differed only by a trailing slash. This block is the no-JS
+         fallback; SEO.tsx replaces its contents once React mounts. -->
+    <script type="application/ld+json" id="tih-jsonld-page">
       {
         "@context": "https://schema.org",
         "@graph": [
@@ -92,8 +107,8 @@
             "familyName": "Rodriguez Dao",
             "url": "https://theincurablehumanist.com/about",
             "image": "https://theincurablehumanist.com/founder.jpg",
-            "jobTitle": "Writer, Immigration Attorney",
-            "description": "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a foreign attorney at a boutique immigration law firm in Manhattan.",
+            "jobTitle": "Writer, Business Immigration Consultant",
+            "description": "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a business immigration consultant working with artists, collectors, entrepreneurs, and leaders across art and entertainment.",
             "knowsAbout": ["Grief", "Migration", "Art", "Latin American Art", "Diaspora"],
             "alumniOf": [
               { "@type": "EducationalOrganization", "name": "Christie's Education, New York" },

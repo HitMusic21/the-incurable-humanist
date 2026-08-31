@@ -11,6 +11,7 @@ import Speak from "./pages/Speak";
 import Listen from "./pages/Listen";
 import Links from "./pages/Links";
 import Subscribed from "./pages/Subscribed";
+import Privacy from "./pages/Privacy";
 import EssayDetail from "./pages/EssayDetail";
 import TopicLanding from "./pages/TopicLanding";
 import AdminLogin from "./pages/admin/Login";
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
       { path: "speak/:topic", element: <TopicLanding /> },
       { path: "listen", element: <Listen /> },
       { path: "subscribed", element: <Subscribed /> },
+      { path: "privacy", element: <Privacy /> },
       // Canonical essay URL. /archive stays as the listing page.
       { path: "essays/:slug", element: <EssayDetail /> },
       // Legacy alias — inbound links from ads/socials sometimes use /archive/:slug.

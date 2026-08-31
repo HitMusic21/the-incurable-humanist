@@ -16,9 +16,9 @@ export function personNode() {
     familyName: "Rodriguez Dao",
     url: `${SITE_URL}/about`,
     image: `${SITE_URL}/founder.jpg`,
-    jobTitle: "Writer, Immigration Attorney",
+    jobTitle: "Writer, Business Immigration Consultant",
     description:
-      "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a foreign attorney at a boutique immigration law firm in Manhattan.",
+      "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a business immigration consultant working with artists, collectors, entrepreneurs, and leaders across art and entertainment.",
     knowsAbout: ["Grief", "Migration", "Art", "Latin American Art", "Diaspora"],
     alumniOf: [
       {
@@ -82,7 +82,11 @@ export function articleNode(input: ArticleNodeInput) {
     ...(input.description ? { description: input.description } : {}),
     ...(input.published ? { datePublished: input.published } : {}),
     ...(input.modified ? { dateModified: input.modified } : {}),
-    ...(input.image ? { image: input.image } : {}),
+    // Self-hosted essay images are root-relative paths; schema.org consumers
+    // read these detached from the page, so they must be absolute.
+    ...(input.image
+      ? { image: input.image.startsWith("/") ? `${SITE_URL}${input.image}` : input.image }
+      : {}),
     author: { "@id": PERSON_ID },
     publisher: { "@id": PERSON_ID },
     mainEntityOfPage: input.url,

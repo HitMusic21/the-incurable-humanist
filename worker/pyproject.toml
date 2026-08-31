@@ -1,0 +1,17 @@
+[project]
+name = "tih-api"
+version = "0.1.0"
+description = "The Incurable Humanist API on Cloudflare Python Workers"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "bleach",
+    "feedparser",
+    "httpx",
+]
+
+[dependency-groups]
+dev = [
+    "workers-py",
+    "workers-runtime-sdk",
+]

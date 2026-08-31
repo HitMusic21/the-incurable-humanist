@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tih-api",
+  "main": "src/worker.py",
+  // Must not exceed the date supported by the local wrangler/workerd binary
+  // (4.113.0 tops out at 2026-07-28) or the runtime refuses to start.
+  "compatibility_date": "2026-07-28",
+  "compatibility_flags": ["python_workers"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tih-db",
+      "database_id": "e6567044-64d3-4bbe-a10f-43506a869118"
+    }
+  ],
+  "assets": {
+    "directory": "./public/",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
+  // Custom Domains: the Worker IS the origin, so Cloudflare creates the DNS
+  // records and issues the certificate. Requires the zone to be active
+  // (nameservers pointing at Cloudflare) — a plain CNAME at the old DNS host
+  // would fail SSL, and partial/CNAME setup is Business-plan only.
+  "routes": [
+    { "pattern": "theincurablehumanist.com", "custom_domain": true },
+    { "pattern": "www.theincurablehumanist.com", "custom_domain": true }
+  ]
+}

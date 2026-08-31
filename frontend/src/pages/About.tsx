@@ -9,7 +9,7 @@ export default function About() {
     <>
       <SEO
         title="About — Denise Rodriguez Dao | The Incurable Humanist"
-        description="Denise Rodriguez Dao is a writer and immigration attorney based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art."
+        description="Denise Rodriguez Dao is a writer and business immigration consultant based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art."
         canonical="https://theincurablehumanist.com/about"
         jsonLd={articleGraphForSite({ path: "/about", pageName: "About" })}
       />
@@ -24,23 +24,14 @@ export default function About() {
 
           <div className="space-y-8 text-[17px] md:text-[18px] leading-[1.75] max-w-[62ch] mx-auto text-justify hyphens-auto [text-wrap:pretty]">
             <p>
-              The Incurable Humanist is a space for grief, migration, and art.
+              Welcome to the curious world of <em>The Incurable Humanist</em>, a space to
+              explore grief, migration, and art.
             </p>
 
             <p>
-              Grief is more than mourning the death of a loved one. It is leaving home, it is
-              heartbreak, it is losing who we once were, it is navigating trauma.
-            </p>
-
-            <p>
-              Migration, too, is a form of grief. Each journey carries a weight of love, loss,
-              and transformation.
-            </p>
-
-            <p>
-              Art is our lifesaver. Art in any of its forms, whether it is painting, music,
-              writing, cooking, theater, film, photography, etc., is a tool through which we
-              process, endure, and transform our grief. Through art, we find resilience.
+              Oops! You&rsquo;ve already gone down the rabbit hole into the unexpected
+              connections between memory and culture, philosophy and history, and the ways we
+              navigate loss and change.
             </p>
 
             {/* Visual Break with Accent Line */}
@@ -49,16 +40,8 @@ export default function About() {
             </div>
 
             <p>
-              The Incurable Humanist was born from the founder, Denise Rodriguez Dao's, own
-              experiences. The profound grief of losing her father, the dislocations of migration
-              from Caracas to Mexico City and now New York, her work in the art world, and her
-              legal experience helping artists and entrepreneurs find new homes in the United States.
-            </p>
-
-            <p>
-              The Incurable Humanist is both personal and collective. It begins with Denise's
-              storytelling; her experiences are the lens through which this space takes shape.
-              Yet it is also collective, because it invites you to share your story.
+              My dearest incurable humanist, I imagine that you, like me, are always
+              overthinking, asking questions, and looking beyond the surface.
             </p>
           </div>
         </Card>
@@ -66,41 +49,37 @@ export default function About() {
         {/* Founder Bio Card */}
         <Card className="p-10 md:p-12 lg:p-14">
           <h2 className="font-serif text-accent2 text-[32px] md:text-[38px] text-center mb-10 md:mb-12 leading-tight">
-            The Founder
+            Denise Rodriguez Dao
           </h2>
 
           {/* Founder Portrait */}
           <div className="mx-auto mb-10 md:mb-12 w-full max-w-[420px] md:max-w-[520px]">
             <img
-              src="/founder.jpg"
-              alt="Denise Rodriguez Dao, founder of The Incurable Humanist"
+              src="/denisehome.jpeg"
+              alt="Denise Rodriguez Dao, who writes The Incurable Humanist, in burgundy blouse with books"
               className="w-full h-auto rounded-xl shadow-soft"
             />
           </div>
 
           <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] text-justify hyphens-auto [text-wrap:pretty]">
             <p>
-              Denise Rodriguez Dao writes <em>The Incurable Humanist</em>, a weekly newsletter
-              exploring grief, migration, and art.
+              Having lived in Caracas, Mexico City, and now based in New York City, I have
+              become fascinated by memory, migration, and the lives behind the statistics. My
+              family background spans Venezuela, Spain, Peru, El Salvador, Lebanon, and the
+              United States, so I grew up surrounded by different traditions and perspectives.
             </p>
 
             <p>
-              She currently works as a foreign attorney at a boutique immigration law firm in
-              Manhattan, where she secures visas for artists, gallerists, entrepreneurs, and
-              cultural professionals.
+              I hold a JD from Universidad Católica Andrés Bello and a Master&rsquo;s degree in
+              Modern and Contemporary Art and the Market from Christie&rsquo;s Education New
+              York. I am a business immigration consultant with experience in contemporary art
+              and the
+              creative industries, where I have worked with artists, collectors, entrepreneurs,
+              musicians, and leaders across art and entertainment.
             </p>
 
             <p>
-              She also has a background in the arts, having served as content director, head of
-              logistics, and artist liaison at Galería RGR in Mexico City. There, she managed a
-              roster that included both iconic figures of Latin American modernism and leading
-              contemporary artists.
-            </p>
-
-            <p>
-              Denise holds a master's degree in Modern and Contemporary Art and the Market from
-              Christie's Education in New York and a J.D. from Andrés Bello Catholic University in
-              Caracas, Venezuela.
+              I&rsquo;m glad you are here! There is always room for another incurable humanist.
             </p>
           </div>
         </Card>

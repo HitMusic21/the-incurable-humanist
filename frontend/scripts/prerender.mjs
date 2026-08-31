@@ -32,7 +32,7 @@ const STATIC_PAGES = [
     path: "/about",
     title: "About — Denise Rodriguez Dao | The Incurable Humanist",
     description:
-      "Denise Rodriguez Dao is a writer and immigration attorney based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art.",
+      "Denise Rodriguez Dao is a writer and business immigration consultant based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art.",
   },
   {
     path: "/archive",
@@ -51,6 +51,12 @@ const STATIC_PAGES = [
     title: "Listen — The Incurable Humanist",
     description:
       "Audio essays and playlists from Denise Rodriguez Dao's Incurable Humanist newsletter.",
+  },
+  {
+    path: "/privacy",
+    title: "Privacy — The Incurable Humanist",
+    description:
+      "How The Incurable Humanist handles analytics, cookies, and newsletter data — what is collected, why, and how to opt out.",
   },
 ];
 
@@ -87,7 +93,8 @@ function articleNode({ title, url, description, published, modified, image }) {
     ...(description ? { description } : {}),
     ...(published ? { datePublished: published } : {}),
     ...(modified ? { dateModified: modified } : {}),
-    ...(image ? { image } : {}),
+    // Absolute, for the same reason as og:image in renderHead().
+    ...(image ? { image: image.startsWith("/") ? `${SITE_URL}${image}` : image } : {}),
     author: { "@id": PERSON_ID },
     publisher: { "@id": PERSON_ID },
     mainEntityOfPage: url,
@@ -123,6 +130,10 @@ async function fetchStories() {
 }
 
 function renderHead({ title, description, canonical, ogImage, jsonLd, noindex }) {
+  // Essay images are now self-hosted under /essay-images/, so cover_image_url is
+  // a ROOT-RELATIVE path. og:image / twitter:image must be absolute or the
+  // social + AI crawlers that fetch them out of context resolve nothing.
+  if (ogImage && ogImage.startsWith("/")) ogImage = `${SITE_URL}${ogImage}`;
   const parts = [];
   parts.push(`<title>${escapeHtml(title)}</title>`);
   parts.push(`<meta name="description" content="${escapeHtml(description)}" />`);

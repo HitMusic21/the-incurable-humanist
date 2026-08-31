@@ -28,6 +28,7 @@ const STATIC_ROUTES = [
   { path: "/archive", priority: "0.9", changefreq: "weekly" },
   { path: "/speak", priority: "0.8", changefreq: "monthly" },
   { path: "/listen", priority: "0.7", changefreq: "monthly" },
+  { path: "/privacy", priority: "0.3", changefreq: "yearly" },
 ];
 
 function xmlEscape(str) {
