@@ -360,8 +360,19 @@ _STATIC_SSR = {
         '<p><a href="https://theincurablehumanist.substack.com">'
         "Listen on Substack</a></p>"
         "<h2>Playlists</h2>"
-        "<p>A curated playlist tied to the essays — the music that runs "
+        "<p>Curated playlists tied to the essays — the music that runs "
         "alongside the writing.</p>"
+        # Both playlists, named and linked. The embeds are client-only, so
+        # without these a non-JS crawler sees a "Playlists" heading with
+        # nothing under it. Keep in step with SITE.spotifyPlaylists — this is
+        # a hand-mirrored copy, as site.ts is TypeScript the Worker cannot
+        # import.
+        "<ul>"
+        '<li><a href="https://open.spotify.com/playlist/4eXyRJSfghSHfTblbGzB5T">'
+        "The Incurable Humanist's Autumn Playlist</a></li>"
+        '<li><a href="https://open.spotify.com/playlist/0G5Z5masq2ajzCP6nUHCBd">'
+        "The Incurable Humanist</a></li>"
+        "</ul>"
         '<p><a href="/archive">Read the essays instead</a></p>'
     ),
     # The privacy policy is mirrored in full rather than summarised. A crawler

@@ -22,10 +22,21 @@ export const SITE = {
   email: "info@theincurablehumanist.com",
   substackUrl: "https://theincurablehumanist.substack.com",
   substackSubscribeUrl: "https://theincurablehumanist.substack.com/subscribe",
-  // Playlist ID only — Listen.tsx builds the /embed/ URL from it. Storing the
-  // share URL instead is the common mistake: pasted straight into an iframe it
-  // renders the full web player rather than the embed.
-  spotifyPlaylistId: "4eXyRJSfghSHfTblbGzB5T" as string | null,
+  // Playlist IDs only — SpotifyPlaylist.tsx builds the /embed/ URL from each.
+  // Storing the share URL instead is the common mistake: pasted straight into
+  // an iframe it renders the full web player rather than the embed.
+  //
+  // A LIST, not a single ID: Denise added the Autumn playlist alongside the
+  // original rather than replacing it, and expects both on /listen. Titles are
+  // the real Spotify names (checked against the oEmbed endpoint), so they match
+  // what a reader sees after clicking through.
+  //
+  // Order is render order. Newest first — the seasonal playlist is the current
+  // one and the evergreen list keeps its place below.
+  spotifyPlaylists: [
+    { id: "4eXyRJSfghSHfTblbGzB5T", title: "The Incurable Humanist's Autumn Playlist" },
+    { id: "0G5Z5masq2ajzCP6nUHCBd", title: "The Incurable Humanist" },
+  ],
   siteUrl: "https://theincurablehumanist.com",
   // Rendered as icons by Footer.tsx and Home.tsx, and mirrored into the
   // Person node's `sameAs` in src/lib/schemaNodes.mjs — add to both or the

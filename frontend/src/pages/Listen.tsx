@@ -45,18 +45,31 @@ export default function Listen() {
         </Card>
       </section>
 
-      {/* Spotify playlist — feature-flagged */}
+      {/* Spotify playlists — feature-flagged on the list being non-empty.
+          Both of Denise's playlists render here (Sep 2026); the Autumn one was
+          added ALONGSIDE the original, not in place of it. Each carries its own
+          heading, or two identical consent facades stack with nothing to tell
+          them apart. */}
       <section className="container mt-14 max-w-4xl">
         <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
           Playlists
         </h2>
-        {SITE.spotifyPlaylistId ? (
-          <Card className="p-4 md:p-6">
-            <SpotifyPlaylist
-              playlistId={SITE.spotifyPlaylistId}
-              title="The Incurable Humanist — playlist on Spotify"
-            />
-          </Card>
+        {SITE.spotifyPlaylists.length > 0 ? (
+          <div className="space-y-6 md:space-y-8">
+            {SITE.spotifyPlaylists.map((playlist) => (
+              // No <h3> with the playlist name: the loaded Spotify player
+              // already renders it in its own header, so a heading directly
+              // above printed the same words twice. The name still reaches
+              // screen readers and the un-consented facade through the title
+              // prop below.
+              <Card key={playlist.id} className="p-4 md:p-6">
+                <SpotifyPlaylist
+                  playlistId={playlist.id}
+                  title={`${playlist.title} — playlist on Spotify`}
+                />
+              </Card>
+            ))}
+          </div>
         ) : (
           <Card className="p-8 md:p-10 text-center">
             <div className="font-serif text-[20px] md:text-[22px] text-ink mb-2">

@@ -20,7 +20,10 @@ export default function SpotifyPlaylist({ playlistId, title, height = 352 }: Pro
       title={title}
       vendor="Spotify"
       minHeight={height}
-      placement="listen-playlist"
+      // Keyed by playlist, not a flat "listen-playlist": /listen renders two
+      // of these, and a shared placement would merge their load events into
+      // one indistinguishable bucket.
+      placement={`listen-playlist-${playlistId}`}
     >
       {/*
         Attributes mirror what Spotify's oEmbed endpoint returns for this

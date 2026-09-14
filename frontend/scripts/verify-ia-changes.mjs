@@ -180,6 +180,20 @@ async function main() {
   check("new audio copy present", /also available in audio/i.test(listenText));
   check("Playlists heading", /Playlists/.test(listenText));
   check("Sunday box removed", !/New essay every Sunday/i.test(listenText));
+  // BOTH playlists, not one. The Autumn playlist was added alongside the
+  // original (Sep 2026), not in place of it. Asserting on the facades rather
+  // than page text: the names live in aria-label / facade copy, and once the
+  // reader consents the name is rendered by Spotify inside a cross-origin
+  // iframe that innerText cannot reach.
+  const facadeLabels = await page
+    .locator('button[aria-label*="playlist on Spotify"]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  check("two playlist facades render", facadeLabels.length === 2, `found ${facadeLabels.length}`);
+  check("Autumn playlist present", facadeLabels.some((l) => /Autumn Playlist/i.test(l)),
+    JSON.stringify(facadeLabels));
+  check("original playlist still present",
+    facadeLabels.some((l) => /The Incurable Humanist — playlist/i.test(l)),
+    JSON.stringify(facadeLabels));
   await page.screenshot({ path: `${SHOTS}/listening.png`, fullPage: false });
 
   // ---- Press ------------------------------------------------------------

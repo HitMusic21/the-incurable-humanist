@@ -99,3 +99,27 @@ def test_press_is_registered_everywhere():
     assert "/press" in _prerender_paths(), "missing from prerender"
     assert "/press" in _nav_paths(), "missing from nav"
     assert 'path: "press"' in _MAIN_TSX.read_text(encoding="utf-8"), "no React route"
+
+
+def test_both_spotify_playlists_are_mirrored_into_the_worker_ssr():
+    """SITE.spotifyPlaylists and the Worker's /listen SSR must name the same IDs.
+
+    The embeds are client-only (consent-gated), so the SSR block is the only
+    thing a non-JS crawler can read — and it repeats the IDs by hand, because
+    site.ts is TypeScript the Worker cannot import. Denise added the Autumn
+    playlist alongside the original in Sep 2026; adding a third to site.ts and
+    forgetting the Worker would silently hide it from every AI crawler.
+    """
+    worker_py = (_ROOT / "worker" / "src" / "worker.py").read_text(encoding="utf-8")
+    site_ts = _SITE_TS.read_text(encoding="utf-8")
+
+    block = re.search(r"spotifyPlaylists:\s*\[(.*?)\]", site_ts, re.S)
+    assert block, "spotifyPlaylists array not found in site.ts"
+    ids = re.findall(r'id:\s*"([^"]+)"', block.group(1))
+    assert len(ids) >= 2, f"expected both playlists in site.ts, found {ids}"
+
+    for playlist_id in ids:
+        assert playlist_id in worker_py, (
+            f"playlist {playlist_id} is in site.ts but missing from the Worker's "
+            "/listen SSR — non-JS crawlers would never see it"
+        )
