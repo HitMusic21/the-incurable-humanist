@@ -478,6 +478,50 @@ _SECURITY_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 
+# Content-Security-Policy, shipped REPORT-ONLY first.
+#
+# Report-Only cannot break anything by construction: the browser evaluates the
+# policy and reports violations without enforcing it. That matters here because
+# the marketing tags are consent-gated — they only load after the visitor opts
+# in, so an un-consented page load exercises none of them and would "prove" a
+# policy that breaks on first consent. Promote to Content-Security-Policy only
+# after watching reports from a consented session on /, /about, /listen, an
+# essay and /archive.
+#
+# Origins below were read out of the source, not guessed:
+#   fonts.googleapis.com / fonts.gstatic.com  index.html stylesheet + font files
+#   us.i.posthog.com                          VITE_PUBLIC_POSTHOG_HOST
+#   www.googletagmanager.com                  analytics.ts GA4 loader
+#   connect.facebook.net / www.facebook.com   analytics.ts Meta pixel + beacon
+#   analytics.tiktok.com                      analytics.ts TikTok (inactive
+#                                             today — the ID is still the
+#                                             placeholder — but listed so
+#                                             enabling it needs no CSP change)
+#   open.spotify.com                          SpotifyPlaylist.tsx iframe; omit
+#                                             it and /listen breaks
+#
+# 'unsafe-inline' is unavoidable in style-src (React inline styles + Tailwind)
+# and needed in script-src for now, because analytics.ts builds the Meta and
+# TikTok pixel bootstraps as inline scripts. Tightening script-src is a
+# follow-up, after the policy is enforcing and stable.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com "
+    "https://connect.facebook.net https://analytics.tiktok.com "
+    "https://us.i.posthog.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com data:; "
+    "img-src 'self' data: https://www.google-analytics.com "
+    "https://www.facebook.com https://analytics.tiktok.com; "
+    "connect-src 'self' https://us.i.posthog.com "
+    "https://www.google-analytics.com https://analytics.tiktok.com "
+    "https://connect.facebook.net; "
+    "frame-src https://open.spotify.com; "
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; "
+    "object-src 'none'"
+)
+_SECURITY_HEADERS["Content-Security-Policy-Report-Only"] = _CSP
+
 # Content-hashed filenames: Vite hashes /assets, rehost_essay_images.py sha1s
 # /essay-images. The URL changes when the bytes change, so the response can
 # never go stale and `immutable` lets the browser skip revalidation entirely.

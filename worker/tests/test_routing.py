@@ -239,3 +239,57 @@ def test_mirrors_source():
     assert 'href="/essays/{_esc(r["slug"])}"' in src
     # HEAD must be served, or link checkers get 405 sitewide.
     assert 'methods=["GET", "HEAD"]' in src
+
+
+# --- content security policy --------------------------------------------------
+
+
+def _csp() -> str:
+    """The CSP string as declared in worker.py."""
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    start = src.index("_CSP = (")
+    end = src.index(")\n", start)
+    return src[start:end]
+
+
+def test_csp_ships_report_only_first():
+    """Enforcing a wrong policy white-screens the site; Report-Only cannot.
+
+    The marketing tags are consent-gated, so an un-consented page load exercises
+    none of them — the policy has to be observed from a CONSENTED session before
+    it is enforced.
+    """
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    assert '_SECURITY_HEADERS["Content-Security-Policy-Report-Only"] = _CSP' in src
+    assert '_SECURITY_HEADERS["Content-Security-Policy"] = _CSP' not in src
+
+
+@pytest.mark.parametrize(
+    ("origin", "why"),
+    [
+        ("https://fonts.googleapis.com", "index.html font stylesheet"),
+        ("https://fonts.gstatic.com", "font files"),
+        ("https://us.i.posthog.com", "VITE_PUBLIC_POSTHOG_HOST"),
+        ("https://www.googletagmanager.com", "GA4 loader in analytics.ts"),
+        ("https://connect.facebook.net", "Meta pixel in analytics.ts"),
+        ("https://analytics.tiktok.com", "TikTok pixel in analytics.ts"),
+        ("https://open.spotify.com", "SpotifyPlaylist.tsx iframe — /listen breaks without it"),
+    ],
+)
+def test_csp_allows_every_origin_the_site_actually_loads(origin, why):
+    assert origin in _csp(), f"CSP would block {origin}: {why}"
+
+
+def test_csp_keeps_the_baseline_restrictions():
+    csp = _csp()
+    assert "default-src 'self'" in csp
+    assert "object-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "base-uri 'self'" in csp
+
+
+def test_hsts_is_not_set_in_the_worker():
+    """HSTS belongs at the Cloudflare zone so it also covers responses this
+    Worker never produces. Setting it in both places invites drift."""
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    assert "Strict-Transport-Security" not in src.split("_SECURITY_HEADERS = {")[1].split("}")[0]
