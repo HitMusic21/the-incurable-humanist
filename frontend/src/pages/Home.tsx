@@ -78,10 +78,14 @@ function HeroBlock() {
                   sat below them were removed at Denise's request (Aug 2026).
                   They were coupled: "Read" was a button, not a link, whose only
                   job was toggling that CTA open. Navigation to those
-                  destinations now lives in the header nav. */}
+                  destinations now lives in the header nav.
+
+                  The margin below is tighter than it was: mt-8/9/10 was spacing
+                  the social row away from that CTA. With the CTA gone the same
+                  value read as an empty hole between the tagline and CONNECT. */}
 
               {/* Social links */}
-              <div className="mt-8 sm:mt-9 lg:mt-10 pt-6 sm:pt-7 border-t border-line/40">
+              <div className="mt-6 sm:mt-7 pt-5 sm:pt-6 border-t border-line/40">
                 <div className="text-[11px] sm:text-[12px] uppercase tracking-[0.14em] text-muted-ink mb-4 font-medium">
                   Connect
                 </div>

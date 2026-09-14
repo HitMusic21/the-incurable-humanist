@@ -91,12 +91,15 @@ export default function Archive() {
         </p>
       </section>
 
-      {/* Outbound Substack subscribe. Sits alongside the on-site form below
-          rather than replacing it — that form feeds /api/leads/subscribe with
-          double opt-in, and those subscribers would not exist if every reader
-          were sent straight to Substack. Hand-rolled because SubscribeCTA
-          renders a form and PillButton has no external-href variant; classes
-          match the outbound button precedent on /listen. */}
+      {/* Outbound Substack subscribe, per Denise's request for this page.
+          It REPLACED the on-site SubscribeCTA that used to sit here: the two
+          stacked read as competing asks — "Subscribe on Substack" directly
+          above "Start with the 5-essay reader" and its email field, both
+          wanting a signup, in different directions.
+          On-site capture is not lost: the end-of-page CTA below still posts to
+          /api/leads/subscribe, as do /about, /listen and every essay page.
+          Hand-rolled because SubscribeCTA renders a form and PillButton has no
+          external-href variant; classes match the outbound button on /listen. */}
       <section className="container mt-10 max-w-3xl text-center">
         <p className="text-[17px] md:text-[18px] text-ink leading-relaxed">
           Subscribe to <em>The Incurable Humanist</em> — a weekly newsletter on grief,
@@ -110,16 +113,6 @@ export default function Archive() {
         >
           Subscribe on Substack
         </a>
-      </section>
-
-      {/* Primary CTA — above the fold of the archive list. Highest-intent surface. */}
-      <section className="container mt-10 max-w-3xl">
-        <SubscribeCTA
-          variant="primary"
-          placement="archive-primary"
-          headline="Start with the 5-essay reader."
-          sub="A free PDF of Denise's best pieces on grief, migration, and art — then the weekly Sunday essay."
-        />
       </section>
 
       {/*
