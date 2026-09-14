@@ -8,6 +8,8 @@ the real shapes observed in the live feed: Substack wraps images in
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from app.services.html_sanitize import (
     content_hash,
@@ -43,17 +45,20 @@ class TestSanitize:
         assert "<svg" not in out
         assert "pencraft" not in out
         assert "tabindex" not in out
-        # The actual content survives.
+        # The actual content survives. <picture>/<source> are deliberately
+        # dropped now (see TestSrcsetIsRemoved) — the <img> they wrapped is
+        # what carries the image, and it is kept.
         assert "<img" in out
-        assert "<picture" in out
-        assert "<source" in out
+        assert "<picture" not in out
+        assert "<source" not in out
         assert "<figcaption>" in out
         assert "Henri-Lucien Doucet" in out
 
-    def test_preserves_responsive_srcset(self):
-        """The JSON API's srcset is the reason <picture>/<source> are allowlisted."""
+    def test_drops_srcset_but_keeps_the_image_and_its_dimensions(self):
+        """srcset is no longer allowlisted (see TestSrcsetIsRemoved), but the
+        intrinsic dimensions must survive — they are what prevents CLS."""
         out = sanitize_substack_html(SUBSTACK_IMAGE_HTML)
-        assert "srcset" in out
+        assert "srcset" not in out
         assert 'width="1456"' in out and 'height="788"' in out
 
     def test_neutralizes_xss_vectors(self):
@@ -61,65 +66,6 @@ class TestSanitize:
         for vector in ("<script", "onerror", "javascript:", "<iframe", "<style"):
             assert vector not in out
         assert "<p>safe</p>" in out
-
-
-class TestSrcsetScrubbing:
-    """nh3's url_schemes guards href and src but IGNORES srcset.
-
-    Since srcset is allowlisted on <img>/<source> to keep Substack's responsive
-    images, the scheme check for it is ours to own. Found by fuzzing: a clean()
-    that correctly stripped `src="javascript:..."` passed
-    `srcset="javascript:..."` through untouched.
-    """
-
-    @pytest.mark.parametrize(
-        "hostile",
-        [
-            '<img srcset="javascript:alert(1)">',
-            "<img srcset='javascript:alert(1)'>",
-            '<IMG SRCSET="JavaScript:alert(1)">',
-            '<source srcset="javascript:alert(1)" type="image/webp">',
-            '<img srcset="vbscript:msgbox(1) 1x">',
-            '<img srcset="data:text/html;base64,PHN2Zz4= 1x">',
-            # One good candidate does not launder a hostile sibling.
-            '<img srcset="https://ok/a.png 424w, javascript:alert(1) 848w">',
-        ],
-    )
-    def test_hostile_srcset_is_dropped(self, hostile):
-        out = sanitize_substack_html(hostile)
-        lowered = out.lower()
-        assert "javascript:" not in lowered
-        assert "vbscript:" not in lowered
-        assert "data:text/html" not in lowered
-
-    def test_substack_cdn_srcset_survives_its_embedded_commas(self):
-        """Regression: the scrubber must not shred legitimate CDN URLs.
-
-        Substack's CDN puts literal commas inside one URL's transform params
-        (`$s_!YX72!,w_424,c_limit,f_webp`). Splitting candidates on a bare comma
-        turned that single URL into scheme-less fragments like `w_424` and
-        stripped every responsive image on the site — real markup verified
-        against the live feed, where a naive split dropped 36 of 36 srcsets.
-        """
-        cdn = (
-            "https://substackcdn.com/image/fetch/$s_!YX72!,w_424,c_limit,f_webp,"
-            "q_auto:good,fl_progressive:steep/https%3A%2F%2Fexample.png"
-        )
-        html = f'<img src="https://cdn/x.png" srcset="{cdn} 424w, {cdn} 848w">'
-        out = sanitize_substack_html(html)
-        assert "srcset=" in out, "legitimate CDN srcset was stripped"
-        assert "424w" in out and "848w" in out
-
-    def test_relative_urls_are_allowed(self):
-        """No scheme means relative, which is safe."""
-        out = sanitize_substack_html('<img srcset="/images/a.png 1x, ./b.png 2x">')
-        assert "srcset=" in out
-
-    def test_adds_lazy_loading_once(self):
-        out = sanitize_substack_html(SUBSTACK_IMAGE_HTML)
-        assert out.count('loading="lazy"') == 1
-        # Re-sanitizing must not stack a second attribute.
-        assert sanitize_substack_html(out).count('loading="lazy"') == 1
 
     def test_keeps_text_of_dropped_tags(self):
         """Substack wraps prose in <span>; the tag goes, the words stay."""
@@ -133,6 +79,83 @@ class TestSrcsetScrubbing:
 
     def test_empty_input(self):
         assert sanitize_substack_html("") == ""
+
+
+class TestSrcsetIsRemoved:
+    """srcset and <picture>/<source> are no longer allowlisted.
+
+    They only earned their place while images were hotlinked from Substack's
+    CDN. rehost_essay_images collapsed every responsive variant onto ONE local
+    file, so the surviving descriptors all pointed at the identical URL — four
+    identical candidates plus sizes="100vw", telling the browser to reserve a
+    full-viewport slot for an image with one resolution. Worse, every
+    <source type="image/webp"> pointed at a .jpg (175/175 on the live corpus).
+
+    Dropping them from the allowlist also subsumes the old _scrub_srcset pass:
+    the sanitizer's url_schemes check ignores srcset, so that function existed
+    to scheme-check it by hand. With the attribute gone, hostile payloads go
+    with it. Cloudflare Polish handles next-gen formats at the edge instead.
+    """
+
+    @pytest.mark.parametrize(
+        "hostile",
+        [
+            '<img srcset="javascript:alert(1)">',
+            "<img srcset='javascript:alert(1)'>",
+            '<IMG SRCSET="JavaScript:alert(1)">',
+            '<source srcset="javascript:alert(1)" type="image/webp">',
+            '<img srcset="vbscript:msgbox(1) 1x">',
+            '<img srcset="data:text/html;base64,PHN2Zz4= 1x">',
+            '<img srcset="https://ok/a.png 424w, javascript:alert(1) 848w">',
+        ],
+    )
+    def test_hostile_srcset_is_dropped(self, hostile):
+        out = sanitize_substack_html(hostile)
+        lowered = out.lower()
+        assert "srcset" not in lowered
+        assert "javascript:" not in lowered
+        assert "vbscript:" not in lowered
+        assert "data:text/html" not in lowered
+
+    def test_srcset_and_sizes_are_always_stripped(self):
+        out = sanitize_substack_html(
+            '<img src="/a.jpg" srcset="/a.jpg 424w, /a.jpg 848w" sizes="100vw">'
+        )
+        assert "srcset" not in out
+        assert "sizes" not in out
+        assert 'src="/a.jpg"' in out, "the real src must survive"
+
+    def test_picture_and_source_are_dropped_but_the_img_survives(self):
+        out = sanitize_substack_html(
+            '<picture><source type="image/webp" srcset="/a.jpg 424w">'
+            '<img src="/a.jpg" alt="A photo"></picture>'
+        )
+        assert "<picture" not in out
+        assert "<source" not in out
+        assert "image/webp" not in out
+        assert 'src="/a.jpg"' in out
+        assert 'alt="A photo"' in out
+
+    def test_dimensions_survive_for_cls(self):
+        out = sanitize_substack_html('<img src="/a.jpg" width="1456" height="788">')
+        assert 'width="1456"' in out and 'height="788"' in out
+
+    def test_first_image_is_eager_and_high_priority(self):
+        """The first image is the LCP element; lazy-loading it defers the very
+        fetch the metric measures."""
+        out = sanitize_substack_html('<p>x</p><img src="/1.jpg"><p>y</p><img src="/2.jpg">')
+        tags = re.findall(r"<img\b[^>]*>", out)
+        assert 'fetchpriority="high"' in tags[0]
+        assert 'loading="lazy"' not in tags[0]
+        assert 'loading="lazy"' in tags[1]
+        assert "fetchpriority" not in tags[1]
+
+    def test_lazy_loading_is_applied_once_and_is_idempotent(self):
+        out = sanitize_substack_html(SUBSTACK_IMAGE_HTML)
+        again = sanitize_substack_html(out)
+        assert again == out, "re-sanitizing stored HTML must be a no-op"
+        # The hero is promoted rather than lazy, so no lazy attribute stacks on it.
+        assert again.count('fetchpriority="high"') == 1
 
 
 class TestFigureLinkNames:

@@ -149,8 +149,28 @@ function buildRss(stories) {
   );
 }
 
+
+// Fail-open is right for a flaky network and WRONG for a misconfigured
+// API_URL: that ships a 10-URL sitemap and 9 prerendered pages instead of 83
+// and 84, silently, and the deploy looks successful. Require an explicit
+// opt-out so an empty build is always a deliberate choice.
+function assertStories(stories, label) {
+  if (stories && stories.length) return;
+  if (process.env.ALLOW_EMPTY_BUILD) {
+    console.warn(`[${label}] 0 essays — continuing because ALLOW_EMPTY_BUILD is set.`);
+    return;
+  }
+  console.error(
+    `[${label}] 0 essays fetched from ${API_URL}.\n` +
+      `  The build would ship a site with no essays. Point API_URL at a live\n` +
+      `  backend, or set ALLOW_EMPTY_BUILD=1 if that is genuinely intended.`
+  );
+  process.exit(1);
+}
+
 async function main() {
   const stories = await fetchStories();
+  assertStories(stories, "sitemap");
 
   mkdirSync(DIST, { recursive: true });
 

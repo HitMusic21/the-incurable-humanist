@@ -27,13 +27,14 @@
          Do not change it without updating that TXT record too. -->
     <meta name="google-site-verification" content="3qSoTc0HhzXYVV7ZT2a9fIC-CDuNBjbztLqk0SO0dJw" />
 
-    <!-- Preload the homepage hero, which is the LCP element. Without this the
-         browser only discovers it after fetching and parsing the JS bundle,
-         because the <img> lives inside the React tree. Measured mobile LCP was
-         5.4s with the image discovered late. Harmless on other routes: it is a
-         242KB request the browser drops if unused, and every route shares this
-         one index.html shell. -->
-    <link rel="preload" as="image" href="/founder.jpg" fetchpriority="high" />
+    <!-- The /founder.jpg preload that used to live here has moved into
+         scripts/prerender.mjs, which emits it for "/" only.
+         It preloads the homepage hero (the LCP element, otherwise discovered
+         only after the JS bundle parses, since the <img> lives inside the React
+         tree — measured mobile LCP was 5.4s without it). But every route shares
+         this shell, so declaring it here issued a 242KB fetchpriority="high"
+         request on all 83 routes, competing for bandwidth with the real LCP
+         image on essay pages, where /founder.jpg is never rendered. -->
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />

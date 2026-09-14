@@ -28,6 +28,7 @@ from collections.abc import AsyncIterator
 import pytest
 from app.core.database import get_session as _real_get_session
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -102,6 +103,12 @@ def _clean_db_between_tests():
                 # Table may not exist yet on a fresh DB; carry on.
                 with contextlib.suppress(Exception):
                     conn.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
+    except OperationalError:
+        # No database reachable. Contract tests will fail on their own with a
+        # clear error, but this fixture is autouse, so without this the pure
+        # unit tests under tests/unit/ — which never touch a database — would
+        # error out at setup too.
+        pass
     finally:
         engine.dispose()
     yield

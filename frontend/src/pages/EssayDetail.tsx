@@ -4,7 +4,7 @@ import SEO from "@/components/SEO";
 import SubscribeCTA from "@/components/SubscribeCTA";
 import Card from "@/components/Card";
 import { API_CONFIG, type StoryDetail as StoryDetailData } from "@/config/api";
-import { articleNode, articleGraphForSite } from "@/lib/schema";
+import { articleNode, articleGraphForSite, pageTitle } from "@/lib/schema";
 import { formatDate } from "@/lib/date";
 import { SITE } from "@/config/site";
 import { useScrollDepth } from "@/hooks/useScrollDepth";
@@ -100,6 +100,18 @@ export default function EssayDetail() {
     ? story.canonical_url
     : ownUrl;
   const description = story.meta_description || story.excerpt || undefined;
+
+  // The excerpt IS the lead paragraph, truncated at 300 chars with an ellipsis
+  // (see excerpt_from in html_sanitize.py). Rendering it as a dek directly
+  // above the body therefore shows the same sentence twice in a row, the
+  // second time in full. Suppress the dek when it is merely a prefix of the
+  // opening paragraph; keep it when the author has written a real standfirst.
+  const firstParagraph = (story.content.match(/<p>(.*?)<\/p>/s)?.[1] ?? "")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+  const dekIsRedundant =
+    !!story.excerpt &&
+    firstParagraph.startsWith(story.excerpt.replace(/…$/, "").trim().slice(0, 60));
   const publishedIso = story.published_at || undefined;
 
   const jsonLd = [
@@ -118,8 +130,11 @@ export default function EssayDetail() {
 
   return (
     <>
+      {/* pageTitle truncates for the <title> tag only — 28 of 73 essay
+          titles overflowed the ~60-char search-result budget once the site
+          suffix was appended. The full headline stays in JSON-LD and OG. */}
       <SEO
-        title={`${story.title} — The Incurable Humanist`}
+        title={pageTitle(story.title)}
         description={description || `${story.title} — an essay by Denise Rodriguez Dao.`}
         canonical={canonical}
         ogImage={story.cover_image_url || undefined}
@@ -140,7 +155,7 @@ export default function EssayDetail() {
           <h1 className="font-serif text-accent2 text-[36px] md:text-[48px] leading-[1.1]">
             {story.title}
           </h1>
-          {story.excerpt && (
+          {story.excerpt && !dekIsRedundant && (
             <p className="mt-5 text-[18px] md:text-[19px] italic text-muted-ink leading-relaxed">
               {story.excerpt}
             </p>
@@ -153,9 +168,15 @@ export default function EssayDetail() {
         </header>
 
         {story.cover_image_url && (
+          // The cover is the LCP element on an essay page. fetchPriority tells
+          // the browser to race it ahead of the rest of the tree; without it
+          // the image is discovered only once React has mounted, since the tag
+          // lives inside the component.
           <img
             src={story.cover_image_url}
             alt=""
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-auto rounded-xl shadow-soft mb-10"
           />
         )}

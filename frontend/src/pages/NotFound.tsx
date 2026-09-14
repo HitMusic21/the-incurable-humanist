@@ -1,8 +1,21 @@
 import Card from "@/components/Card";
 import PillButton from "@/components/PillButton";
+import SEO from "@/components/SEO";
+import { SITE } from "@/config/site";
 
 export default function NotFound() {
   return (
+    <>
+      {/* noindex is load-bearing. The Worker's SPA fallback serves unmatched
+          paths as 200 + shell (it cannot tell a typo from /subscribed or
+          /links, which are real routes), so without this every mistyped URL
+          would be an indexable soft-404. */}
+      <SEO
+        title="Page not found — The Incurable Humanist"
+        description="That page doesn't exist or has been moved."
+        canonical={`${SITE.siteUrl}/404`}
+        noindex
+      />
     <section className="container py-20 md:py-28 lg:py-36 text-center max-w-3xl">
       <Card className="p-10 md:p-12 lg:p-14">
         <h1 className="font-serif text-accent text-[64px] md:text-[80px] mb-4">404</h1>
@@ -27,5 +40,6 @@ export default function NotFound() {
         </div>
       </Card>
     </section>
+    </>
   );
 }

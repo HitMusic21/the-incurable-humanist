@@ -37,6 +37,19 @@ const API_URL = (process.env.API_URL || "http://localhost:8000").replace(/\/$/, 
 // Kept in inline mirrors so this script doesn't need to compile TS at build.
 const STATIC_PAGES = [
   {
+    // The homepage was previously the ONLY route this script did not touch,
+    // so it kept index.html's hand-written JSON-LD while every other page
+    // got prerender's (then-stubbed) version. Prerendering it too makes the
+    // whole site consistent and is what scopes the /founder.jpg LCP preload
+    // to the one route that actually renders it.
+    path: "/",
+    crumb: "Home",
+    preloadImage: "/founder.jpg",
+    title: "The Incurable Humanist | Grief, Migration, and Art",
+    description:
+      "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art — and what gets inherited anyway.",
+  },
+  {
     path: "/about",
     title: "About — Denise Rodriguez Dao | The Incurable Humanist",
     description:
@@ -122,7 +135,7 @@ async function fetchStories() {
   }
 }
 
-function renderHead({ title, description, canonical, ogImage, jsonLd, noindex }) {
+function renderHead({ title, description, canonical, ogImage, jsonLd, noindex, ogType, preloadImage }) {
   // Essay images are now self-hosted under /essay-images/, so cover_image_url is
   // a ROOT-RELATIVE path. og:image / twitter:image must be absolute or the
   // social + AI crawlers that fetch them out of context resolve nothing.
@@ -134,7 +147,9 @@ function renderHead({ title, description, canonical, ogImage, jsonLd, noindex })
   parts.push(`<meta property="og:title" content="${escapeHtml(title)}" />`);
   parts.push(`<meta property="og:description" content="${escapeHtml(description)}" />`);
   parts.push(`<meta property="og:url" content="${escapeHtml(canonical)}" />`);
-  parts.push(`<meta property="og:type" content="article" />`);
+  // "article" is right for essays and wrong for the homepage and the
+  // marketing routes, which are not articles.
+  parts.push(`<meta property="og:type" content="${escapeHtml(ogType || "website")}" />`);
   if (ogImage) {
     parts.push(`<meta property="og:image" content="${escapeHtml(ogImage)}" />`);
   }
@@ -147,6 +162,13 @@ function renderHead({ title, description, canonical, ogImage, jsonLd, noindex })
   parts.push(
     `<meta name="robots" content="${noindex ? "noindex, nofollow" : "index, follow"}" />`
   );
+  if (preloadImage) {
+    // Route-scoped LCP preload. The <img> lives inside the React tree, so
+    // without this the browser only discovers it after the bundle parses.
+    parts.push(
+      `<link rel="preload" as="image" href="${escapeHtml(preloadImage)}" fetchpriority="high" />`
+    );
+  }
   parts.push(`<link rel="alternate" type="application/rss+xml" title="The Incurable Humanist" href="${SITE_URL}/rss.xml" />`);
   parts.push(
     `<script type="application/ld+json" id="tih-jsonld-page">${JSON.stringify(
@@ -209,13 +231,20 @@ async function main() {
       // `noindex` is forwarded for transactional pages (/subscribed, /links).
       // Before this, the flag existed on renderHead but was never passed.
       noindex: p.noindex,
+      preloadImage: p.preloadImage,
       jsonLd: [
         personNode(),
         websiteNode(),
-        breadcrumbNode([
-          { name: "Home", path: "/" },
-          { name: p.crumb || p.title.split(" — ")[0], path: p.path },
-        ]),
+        // The homepage is the breadcrumb root, so it gets a single-item trail
+        // rather than "Home > Home".
+        breadcrumbNode(
+          p.path === "/"
+            ? [{ name: "Home", path: "/" }]
+            : [
+                { name: "Home", path: "/" },
+                { name: p.crumb || p.title.split(" — ")[0], path: p.path },
+              ]
+        ),
       ],
     });
     writePage(p.path, inject(shell, head));
@@ -244,8 +273,28 @@ async function main() {
     written++;
   }
 
+
+// Fail-open is right for a flaky network and WRONG for a misconfigured
+// API_URL: that ships a 10-URL sitemap and 9 prerendered pages instead of 83
+// and 84, silently, and the deploy looks successful. Require an explicit
+// opt-out so an empty build is always a deliberate choice.
+function assertStories(stories, label) {
+  if (stories && stories.length) return;
+  if (process.env.ALLOW_EMPTY_BUILD) {
+    console.warn(`[${label}] 0 essays — continuing because ALLOW_EMPTY_BUILD is set.`);
+    return;
+  }
+  console.error(
+    `[${label}] 0 essays fetched from ${API_URL}.\n` +
+      `  The build would ship a site with no essays. Point API_URL at a live\n` +
+      `  backend, or set ALLOW_EMPTY_BUILD=1 if that is genuinely intended.`
+  );
+  process.exit(1);
+}
+
   // Essays (network-dependent)
   const stories = await fetchStories();
+  assertStories(stories, "prerender");
   for (const s of stories) {
     const ownUrl = `${SITE_URL}/essays/${s.slug}`;
     const canonical = s.canonical_url && s.canonical_url.length > 0 ? s.canonical_url : ownUrl;
@@ -259,6 +308,7 @@ async function main() {
       description,
       canonical,
       ogImage: s.cover_image_url || undefined,
+      ogType: "article",
       jsonLd: [
         personNode(),
         websiteNode(),

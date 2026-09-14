@@ -25,13 +25,20 @@ import re
 
 import bleach
 
-# Structural tags we render. <picture>/<source> matter: the JSON API serves
-# responsive srcset variants that the RSS feed does not.
+# Structural tags we render.
+#
+# <picture>/<source> are deliberately NOT allowed. Substack's responsive markup
+# only made sense while images were hotlinked from its CDN: rehost_essay_images
+# collapsed every srcset variant onto ONE local file (all variants wrapped the
+# same upstream original), leaving srcsets whose width descriptors all point at
+# the identical URL, and <source type="image/webp"> elements pointing at .jpg
+# files — 175/175 of them lied about the format. Next-gen delivery is handled at
+# the edge by Cloudflare Polish instead, per-client and per Accept header.
 ALLOWED_TAGS: set[str] = {
     "p", "br", "h1", "h2", "h3", "h4", "h5", "h6",
     "strong", "em", "i", "b", "u", "s",
     "blockquote", "ul", "ol", "li",
-    "a", "img", "picture", "source",
+    "a", "img",
     "figure", "figcaption", "hr", "code", "pre", "sup", "sub",
 }
 
@@ -40,8 +47,9 @@ ALLOWED_ATTRS: dict[str, set[str]] = {
     # the _LINK_NO_REL_RE pass. Allowlisted so a re-sanitize of already-stored
     # HTML doesn't strip the accessible name or the rel hardening.
     "a": {"href", "title", "aria-label", "rel"},
-    "img": {"src", "alt", "width", "height", "loading", "srcset", "sizes"},
-    "source": {"srcset", "type", "sizes"},
+    # srcset/sizes dropped for the reason above; fetchpriority is ours, set on
+    # the first image (the LCP element) by strip_degenerate_srcset.
+    "img": {"src", "alt", "width", "height", "loading", "fetchpriority"},
 }
 
 ALLOWED_URL_SCHEMES: set[str] = {"http", "https", "mailto"}
@@ -60,7 +68,17 @@ _RAW_TEXT_OPEN_RE = re.compile(
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
-_IMG_OPEN_RE = re.compile(r"<img(?![^>]*\bloading=)")
+# Adds loading="lazy" to images that have neither loading= nor fetchpriority=.
+# The fetchpriority guard matters for idempotency: _promote_first_image
+# REMOVES loading="lazy" from the hero, so without it a re-sanitize would
+# see a bare <img> and put the attribute straight back, leaving the hero
+# with both loading="lazy" and fetchpriority="high".
+_IMG_OPEN_RE = re.compile(r"<img(?![^>]*\b(?:loading|fetchpriority)=)")
+# Whole <img …> tag, for the first-image promotion. Attribute order varies in
+# the corpus, so the lazy attribute is removed from within the matched tag
+# rather than by replacing a fixed prefix.
+_IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_LAZY_ATTR_RE = re.compile(r'\s+loading="lazy"', re.IGNORECASE)
 # Whole <figure> block: the caption is an *uncle* of the <img> (figure > a >
 # picture > img, with figcaption a sibling of the <a>), so a sibling-scoped
 # regex would never see it.
@@ -70,55 +88,19 @@ _LINK_OPEN_RE = re.compile(r"<a\b(?![^>]*\baria-label=)", re.IGNORECASE)
 # Guarded against double-apply so re-sanitizing stored HTML is idempotent.
 _LINK_NO_REL_RE = re.compile(r"<a\b(?![^>]*\brel=)", re.IGNORECASE)
 _ALT_RE = re.compile(r'\salt=(["\']).*?\1', re.IGNORECASE | re.DOTALL)
-# Captures a whole srcset="..." / srcset='...' attribute so it can be dropped
-# wholesale when any candidate URL carries a disallowed scheme.
-_SRCSET_RE = re.compile(r"\ssrcset=([\"'])(.*?)\1", re.IGNORECASE | re.DOTALL)
-# Candidate separator: a comma followed by whitespace. Substack's CDN embeds
-# bare commas inside a single URL's transform params, so a plain "," split
-# would shred one legitimate URL into scheme-less fragments.
-_SRCSET_SPLIT_RE = re.compile(r",\s+")
+
+# There used to be a _scrub_srcset pass here. It existed because srcset was
+# allowlisted on <img>/<source> and the sanitizer's url_schemes check only
+# guards href/src — so `srcset="javascript:alert(1)"` would have survived an
+# otherwise correct clean(). srcset is no longer allowlisted (see ALLOWED_ATTRS),
+# which means the sanitizer now strips the attribute outright, payload and all.
+# Verified: bleach.clean() on `<img src="/ok.jpg" srcset="javascript:alert(1) 1x">`
+# returns `<img src="/ok.jpg">`. Do not re-add srcset to the allowlist without
+# restoring that scheme check.
 
 # Substack's own style attribute is the only one in the corpus (232 instances,
 # all `text-align: justify`). It is stripped by the allowlist; the
 # `.essay-content p` CSS rule applies justification instead.
-
-
-def _scrub_srcset(match: re.Match[str]) -> str:
-    """Drop a srcset unless every candidate URL uses an allowed scheme.
-
-    nh3's `url_schemes` only guards `href` and `src` — it passes `srcset`
-    through untouched, so `srcset="javascript:alert(1)"` survives an otherwise
-    correct clean(). We allowlist `srcset` on <img>/<source> to keep Substack's
-    responsive images, which means we own this check.
-
-    A srcset is a comma-separated list of "<url> <descriptor>" pairs. Rejecting
-    the whole attribute (rather than filtering candidates) is deliberate: a
-    partly-hostile srcset is not something to salvage, and dropping it degrades
-    to the plain `src`, which nh3 has already validated.
-
-    Splitting on a bare comma is WRONG here. Substack's CDN puts literal commas
-    inside a single URL's transform params:
-
-        https://substackcdn.com/image/fetch/$s_!YX72!,w_424,c_limit,f_webp/...
-
-    A bare split turns that one URL into fragments like "w_424", which have no
-    scheme and would fail the check — silently stripping every legitimate
-    responsive image. Split on the real delimiter instead: a comma that follows
-    a descriptor and precedes the next URL, i.e. comma + whitespace.
-    """
-    value = match.group(2)
-    for candidate in _SRCSET_SPLIT_RE.split(value):
-        stripped = candidate.strip()
-        if not stripped:
-            continue
-        url = stripped.split()[0]
-        scheme = url.split(":", 1)[0].lower().strip() if ":" in url else ""
-        # A scheme-relative or path-relative URL has no scheme, which is safe.
-        # Guard against "javascript" appearing before a path-only colon by
-        # requiring the scheme to look like a scheme (no slash before the colon).
-        if scheme and "/" not in scheme and scheme not in ALLOWED_URL_SCHEMES:
-            return ""
-    return match.group(0)
 
 
 def _name_figure_link(match: re.Match[str]) -> str:
@@ -149,6 +131,27 @@ def _name_figure_link(match: re.Match[str]) -> str:
     else:
         label = "View image"
     return _LINK_OPEN_RE.sub(f'<a aria-label="{html_module.escape(label, quote=True)}"', figure, 1)
+
+
+def _promote_first_image(html: str) -> str:
+    """Make the first image eager and high-priority; keep the rest lazy.
+
+    The blanket loading="lazy" pass above is right for everything below the
+    fold and wrong for the first image, which on a long-form essay is the LCP
+    element — lazy-loading defers its request until after layout, so the metric
+    it defines is measured against a deliberately delayed fetch.
+
+    Idempotent: a second run finds fetchpriority already set and no lazy
+    attribute to remove.
+    """
+    match = _IMG_TAG_RE.search(html)
+    if not match:
+        return html
+    tag = match.group(0)
+    if "fetchpriority=" in tag.lower():
+        return html
+    promoted = _LAZY_ATTR_RE.sub("", tag).replace("<img", '<img fetchpriority="high"', 1)
+    return html[: match.start()] + promoted + html[match.end() :]
 
 
 def _strip_raw_text_elements(raw: str) -> str:
@@ -191,11 +194,11 @@ def sanitize_substack_html(raw: str) -> str:
     # Every <a> here is an outbound Substack link opened from our origin;
     # without rel="noopener" the target gets a live window.opener handle.
     cleaned = _LINK_NO_REL_RE.sub('<a rel="nofollow noopener"', cleaned)
-    # See _scrub_srcset: the allowlist does not scheme-check srcset, so we do.
-    cleaned = _SRCSET_RE.sub(_scrub_srcset, cleaned)
-    # nh3 filters attributes, it never adds them — so loading="lazy" and the
-    # figure accessible names are post-passes. Both guarded against double-apply.
+    # The sanitizer filters attributes, it never adds them — so loading="lazy"
+    # and the figure accessible names are post-passes. Both guarded against
+    # double-apply.
     cleaned = _IMG_OPEN_RE.sub('<img loading="lazy"', cleaned)
+    cleaned = _promote_first_image(cleaned)
     return _FIGURE_RE.sub(_name_figure_link, cleaned)
 
 
