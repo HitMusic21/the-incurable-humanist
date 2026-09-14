@@ -29,9 +29,10 @@ _WORKER_PY = Path(__file__).resolve().parents[1] / "src" / "worker.py"
 
 # --- mirrored from worker/src/worker.py -------------------------------------
 
+# "press" is intentionally NOT here — it became a real page in Aug 2026.
+# test_press_is_no_longer_a_redirect guards that.
 _REDIRECTS = {
     "newsletter": "/",
-    "press": "/archive",
     "contact": "/speak",
     "essays": "/archive",
 }
@@ -74,7 +75,6 @@ def _falls_back(clean: str) -> bool:
     ("path", "expected"),
     [
         ("newsletter", "/"),
-        ("press", "/archive"),
         ("contact", "/speak"),
         ("essays", "/archive"),
         # Legacy essay alias -> canonical, no trailing slash (matches sitemap).
@@ -92,6 +92,7 @@ def test_retired_routes_redirect(path, expected):
         "",                       # home
         "about",
         "archive",                # the real listing page, NOT an alias
+        "press",                  # a real page since Aug 2026, not a redirect
         "essays/ambiguous-loss",  # a real essay shares the /essays prefix
         "speak",
         "speak/grief-and-inheritance",
@@ -293,3 +294,14 @@ def test_hsts_is_not_set_in_the_worker():
     Worker never produces. Setting it in both places invites drift."""
     src = _WORKER_PY.read_text(encoding="utf-8")
     assert "Strict-Transport-Security" not in src.split("_SECURITY_HEADERS = {")[1].split("}")[0]
+
+
+def test_press_is_no_longer_a_redirect():
+    """/press used to 301 to /archive, where the press cards lived.
+
+    It became a page of its own in Aug 2026. The redirect table is consulted
+    BEFORE ASSETS.fetch(), so a lingering entry here would 301 away from the
+    page and no amount of prerendering would make it reachable.
+    """
+    assert _redirect_target("press") is None
+    assert '"press":' not in _WORKER_PY.read_text(encoding="utf-8").split("_REDIRECTS = {")[1].split("}")[0]

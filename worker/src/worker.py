@@ -320,7 +320,7 @@ _ABOUT_MARKUP = (
     "the statistics. She is a writer and business immigration consultant working "
     "with artists, collectors, entrepreneurs, and leaders across art and "
     "entertainment.</p>"
-    '<p><a href="/archive">Read the essay archive</a> · '
+    '<p><a href="/archive">Read the writing</a> · '
     '<a href="/speak">Speaking topics and booking</a></p>'
 )
 
@@ -330,12 +330,15 @@ _ABOUT_MARKUP = (
 # PerplexityBot do not, so /about and the speaking pages were literally blank
 # to every AI answer engine.
 _STATIC_SSR = {
+    # Tagline mirrors SITE.heroTagline, not SITE.positioning: Denise dropped
+    # "— and what gets inherited anyway" from visible copy while keeping it in
+    # meta descriptions and JSON-LD. The nav strip mirrors SITE.nav.
     "": (
         "<h1>The Incurable Humanist</h1>"
-        "<p>By Denise Rodriguez Dao. Weekly essays on grief, migration, and art "
-        "— and what gets inherited anyway.</p>"
-        '<p><a href="/archive">Archive</a> · <a href="/about">About</a> · '
-        '<a href="/speak">Speak</a> · <a href="/listen">Listen</a></p>'
+        "<p>By Denise Rodriguez Dao. Weekly essays on grief, migration, and art.</p>"
+        '<p><a href="/about">About</a> · <a href="/archive">Writing</a> · '
+        '<a href="/speak">Speaking</a> · <a href="/listen">Listening</a> · '
+        '<a href="/press">Press</a></p>'
     ),
     "about": _ABOUT_MARKUP,
     # Mirrors frontend/src/pages/Listen.tsx. The Spotify embed itself is
@@ -343,13 +346,13 @@ _STATIC_SSR = {
     # server-rendered version describes what is there and links out rather than
     # pretending to embed a player.
     "listen": (
-        "<h1>Listen</h1>"
+        "<h1>Listening</h1>"
         "<h2>Audio essays</h2>"
-        "<p>Every essay is available in audio. Denise reads each piece herself "
-        "— the same voice, whether you prefer to read or listen.</p>"
+        "<p>Every essay is also available in audio, read by Denise — whether "
+        "you prefer to read or listen.</p>"
         '<p><a href="https://theincurablehumanist.substack.com">'
         "Listen on Substack</a></p>"
-        "<h2>Playlist</h2>"
+        "<h2>Playlists</h2>"
         "<p>A curated playlist tied to the essays — the music that runs "
         "alongside the writing.</p>"
         '<p><a href="/archive">Read the essays instead</a></p>'
@@ -453,6 +456,38 @@ async def _ssr_speak(request_env) -> str | None:
     )
 
 
+async def _ssr_press(request_env) -> str | None:
+    """Server-rendered /press body.
+
+    Reads press.json, emitted at build time by scripts/generate-sitemap.mjs from
+    src/data/press.mjs — the same ASSETS-binding pattern as _topics(), and for
+    the same reason: site.ts is TypeScript this Worker cannot import, and a
+    Python copy of the outlet list would drift the moment one is added.
+    """
+    import json
+
+    resp = await request_env.ASSETS.fetch("https://assets.local/press.json")
+    if resp.status != 200:
+        return None
+    items = json.loads((await resp.bytes()).decode("utf-8"))
+    if not items:
+        return None
+    entries = "".join(
+        f"<li><h2>{_esc(i.get('outlet') or '')}</h2>"
+        + f'<p><a href="{_esc(i.get("href") or "")}">{_esc(i.get("title") or "")}</a></p>'
+        + (f"<p>{_esc(i.get('dek') or '')}</p>" if i.get("dek") else "")
+        + "</li>"
+        for i in items
+        if i.get("href")
+    )
+    return (
+        "<h1>Press</h1>"
+        "<p>Writing and conversations about Denise Rodriguez Dao's work in Latin "
+        "American art, migration, and cultural advocacy.</p>"
+        f"<ul>{entries}</ul>"
+    )
+
+
 async def _render_markup(request_env, clean: str) -> str | None:
     """Server-rendered body for `clean`, or None when the route has no SSR.
 
@@ -466,6 +501,8 @@ async def _render_markup(request_env, clean: str) -> str | None:
         return await _ssr_archive(request_env.DB)
     if clean == "speak":
         return await _ssr_speak(request_env)
+    if clean == "press":
+        return await _ssr_press(request_env)
     if clean.startswith("speak/") and clean.count("/") == 1:
         return await _ssr_topic(request_env, clean.split("/", 1)[1])
     return _STATIC_SSR.get(clean)
@@ -482,10 +519,13 @@ async def _render_markup(request_env, clean: str) -> str | None:
 # 200 page, not the JS redirect.
 _REDIRECTS = {
     "newsletter": "/",
-    "press": "/archive",
     "contact": "/speak",
     "essays": "/archive",
 }
+# "press" deliberately absent. It used to redirect to /archive, where the press
+# cards lived; Aug 2026 it became a real page again. This table is consulted
+# BEFORE ASSETS.fetch(), so leaving the entry here would 301 away from the page
+# and no amount of prerendering would make it reachable.
 
 # Static-file extensions. A 404 on one of these is a REAL 404 and must stay one.
 # Serving index.html as text/html for a missing .js white-screens the site while

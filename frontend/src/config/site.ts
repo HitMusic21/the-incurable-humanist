@@ -1,12 +1,20 @@
 import { SPEAKING_TOPICS } from "@/data/speakingTopics.mjs";
+import { PRESS } from "@/data/press.mjs";
 
 export const SITE = {
   brand: "THE INCURABLE HUMANIST",
+  // Drives BOTH the header (shell/App.tsx) and the footer (components/Footer.tsx).
+  // Privacy is deliberately absent — it is a footer-tier link, added there directly.
+  // "WRITING" keeps the /archive URL: that path carries the site's inbound links,
+  // sits at sitemap priority 0.9, and is the breadcrumb parent of all 73 essays.
+  // The label changed; the URL did not.
   nav: [
-    { label: "ARCHIVE", to: "/archive" },
-    { label: "LISTEN", to: "/listen" },
-    { label: "SPEAK", to: "/speak" },
-    { label: "ABOUT", to: "/about" }
+    { label: "HOME", to: "/" },
+    { label: "ABOUT", to: "/about" },
+    { label: "WRITING", to: "/archive" },
+    { label: "SPEAKING", to: "/speak" },
+    { label: "LISTENING", to: "/listen" },
+    { label: "PRESS", to: "/press" }
   ],
   email: "info@theincurablehumanist.com",
   bookingEmail: "booking@theincurablehumanist.com",
@@ -25,34 +33,25 @@ export const SITE = {
     linkedin: "https://www.linkedin.com/company/the-incurable-humanist/about/",
     x: "https://x.com/TheIncurableHum"
   },
-  press: [
-    {
-      outlet: "The Art Gorgeous",
-      title: "Denise Dao Is The Powerhouse Promoting Latin American Art",
-      dek: "Feature article highlighting Denise's role in promoting Latin American artists and cultural advocacy work.",
-      href: "https://theartgorgeous.com/denise-dao-is-the-powerhouse-promoting-latin-american-art/"
-    },
-    {
-      outlet: "Click Magazine NYC",
-      title: "For the Love of Art",
-      dek: "An in-depth profile exploring Denise's passion for art and her multifaceted career bridging law and culture.",
-      href: "https://clickmagazinenyc.com/for-the-love-of-art/denisedaoart"
-    },
-    {
-      outlet: "La Guía de Caracas",
-      title: "Denise Rodriguez Dao Promoviendo Arte",
-      dek: "Coverage of Denise's art promotion work and cultural contributions in Latin American communities.",
-      href: "http://laguiadecaracas.net/41802/denise-rodriguez-dao-promoviendo-arte/"
-    }
-  ],
+  // Press coverage lives in src/data/press.mjs so the Node build scripts and
+  // the Python Worker can read the same list — see that file's header.
+  press: PRESS,
   hero: {
     title: "The Incurable Humanist",
     byline: "By Denise Rodriguez Dao",
     tagline: "Exploring grief, migration, and art"
   },
   // TODO(copy): confirm final wording with Denise.
+  // `positioning` is the DESCRIPTIVE string: it feeds meta descriptions, OG and
+  // Twitter tags, and the WebSite node's `description` in JSON-LD. It is not
+  // rendered as visible page copy.
   positioning:
     "Grief, migration, and art — and what gets inherited anyway.",
+  // `heroTagline` is what a reader actually sees on the homepage. Split from
+  // `positioning` in Aug 2026 when Denise asked to drop "— and what gets
+  // inherited anyway" from the visible copy while keeping it in search results.
+  // Changing one no longer silently changes the other.
+  heroTagline: "Grief, migration, and art.",
   // TODO(content): replace with the three "truest expression" essays + the Venezuela piece.
   // Order below is the intended editorial ranking on the Archive page.
   bestOfEssays: [

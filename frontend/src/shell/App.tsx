@@ -76,7 +76,10 @@ export default function App() {
             {/* HANDWRITING LOGO PLACEHOLDER — swap for grandmother's handwriting SVG when provided. */}
             {SITE.brand}
           </Link>
-          <nav className="flex gap-6 md:gap-8 text-[12px] tracking-widecaps uppercase text-muted-ink">
+          {/* Six items where there were four, and this codebase has no mobile
+              menu — so the row must wrap rather than overflow at ~375px.
+              Tighter gaps and a smaller size on mobile keep it to two lines. */}
+          <nav className="flex flex-wrap justify-end gap-x-4 gap-y-2 sm:gap-x-6 md:gap-x-8 text-[11px] sm:text-[12px] tracking-widecaps uppercase text-muted-ink">
             {SITE.nav.map((item) => (
               <NavLink
                 key={item.to}

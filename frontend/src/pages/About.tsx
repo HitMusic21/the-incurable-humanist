@@ -15,14 +15,33 @@ export default function About() {
       />
       <SectionTitle>About</SectionTitle>
 
+      {/* One card, portrait first, no section subtitles — Denise's Aug 2026
+          revision. The prose was previously split across two cards headed "The
+          Incurable Humanist" and "Denise Rodriguez Dao"; those headings are
+          gone and the six paragraphs now run continuously, as she wrote them.
+          The page's own <SectionTitle>About</SectionTitle> remains the h1. */}
       <section className="container mt-10 pb-20 md:pb-28 max-w-4xl">
-        {/* Main Content Card */}
-        <Card className="p-10 md:p-12 lg:p-14 mb-10 md:mb-14">
-          <h2 className="font-serif text-accent2 text-[32px] md:text-[38px] text-center mb-10 md:mb-12 leading-tight">
-            The Incurable Humanist
-          </h2>
+        <Card className="p-10 md:p-12 lg:p-14">
+          {/* Portrait sits above all the prose. It is the LCP element on this
+              page, so it carries intrinsic dimensions: without them the browser
+              reserves no height and the whole card reflows when the image
+              lands — the same defect fixed on essay pages in Sep 2026. */}
+          <div className="mx-auto mb-10 md:mb-12 w-full max-w-[420px] md:max-w-[520px]">
+            <img
+              src="/denisehome.jpeg"
+              alt="Denise Rodriguez Dao, who writes The Incurable Humanist, in burgundy blouse with books"
+              width={2832}
+              height={4240}
+              fetchPriority="high"
+              decoding="async"
+              className="w-full h-auto rounded-xl shadow-soft"
+            />
+          </div>
 
-          <div className="space-y-8 text-[17px] md:text-[18px] leading-[1.75] max-w-[62ch] mx-auto text-justify hyphens-auto [text-wrap:pretty]">
+          {/* Long-form prose treatment per docs/UI_DESIGN_SYSTEM.md: 62ch
+              measure, centred, justified, hyphenated. About is the canonical
+              example of this rule — do not swap it for max-w-3xl. */}
+          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] text-justify hyphens-auto [text-wrap:pretty]">
             <p>
               Welcome to the curious world of <em>The Incurable Humanist</em>, a space to
               explore grief, migration, and art.
@@ -34,34 +53,11 @@ export default function About() {
               navigate loss and change.
             </p>
 
-            {/* Visual Break with Accent Line */}
-            <div className="py-6 md:py-8">
-              <div className="mx-auto h-[2px] w-[56px] rounded bg-accent" />
-            </div>
-
             <p>
               My dearest incurable humanist, I imagine that you, like me, are always
               overthinking, asking questions, and looking beyond the surface.
             </p>
-          </div>
-        </Card>
 
-        {/* Founder Bio Card */}
-        <Card className="p-10 md:p-12 lg:p-14">
-          <h2 className="font-serif text-accent2 text-[32px] md:text-[38px] text-center mb-10 md:mb-12 leading-tight">
-            Denise Rodriguez Dao
-          </h2>
-
-          {/* Founder Portrait */}
-          <div className="mx-auto mb-10 md:mb-12 w-full max-w-[420px] md:max-w-[520px]">
-            <img
-              src="/denisehome.jpeg"
-              alt="Denise Rodriguez Dao, who writes The Incurable Humanist, in burgundy blouse with books"
-              className="w-full h-auto rounded-xl shadow-soft"
-            />
-          </div>
-
-          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] text-justify hyphens-auto [text-wrap:pretty]">
             <p>
               Having lived in Caracas, Mexico City, and now based in New York City, I have
               become fascinated by memory, migration, and the lives behind the statistics. My
@@ -73,9 +69,8 @@ export default function About() {
               I hold a JD from Universidad Católica Andrés Bello and a Master&rsquo;s degree in
               Modern and Contemporary Art and the Market from Christie&rsquo;s Education New
               York. I am a business immigration consultant with experience in contemporary art
-              and the
-              creative industries, where I have worked with artists, collectors, entrepreneurs,
-              musicians, and leaders across art and entertainment.
+              and the creative industries, where I have worked with artists, collectors,
+              entrepreneurs, musicians, and leaders across art and entertainment.
             </p>
 
             <p>

@@ -34,6 +34,8 @@ def _route_kind(clean: str) -> str:
         return "archive"
     if clean == "speak":
         return "speak"
+    if clean == "press":
+        return "press"
     if clean.startswith("speak/") and clean.count("/") == 1:
         return "topic"
     if clean in _STATIC_SSR_KEYS:
@@ -50,6 +52,7 @@ def _route_kind(clean: str) -> str:
         ("privacy", "static"),
         ("archive", "archive"),
         ("speak", "speak"),
+        ("press", "press"),
         ("speak/grief-and-inheritance", "topic"),
         ("speak/migration-as-grief", "topic"),
         ("essays/ambiguous-loss", "essay"),
@@ -67,7 +70,7 @@ def test_dispatch(path, kind):
 
 def test_every_marketing_route_has_ssr():
     """The routes that shipped an empty body must all resolve to SSR now."""
-    for path in ("", "about", "speak", "listen", "privacy"):
+    for path in ("", "about", "speak", "listen", "privacy", "press"):
         assert _route_kind(path) != "none", f"/{path} lost its SSR"
 
 
@@ -91,6 +94,8 @@ def test_topics_json_is_emitted_by_the_sitemap_script():
     """The Worker depends on this file existing in public/ at deploy time."""
     src = (_ROOT / "frontend" / "scripts" / "generate-sitemap.mjs").read_text("utf-8")
     assert "speaking-topics.json" in src
+    # /press reads its outlets the same way, for the same reason.
+    assert "press.json" in src
     for field in ("slug", "title", "subtitle", "audience", "blurb"):
         assert f"{field}: t.{field}" in src, f"{field} missing from the emitted JSON"
 
@@ -113,6 +118,7 @@ def test_dispatch_mirrors_source():
     assert 'if clean.startswith("essays/") and clean.count("/") == 1:' in src
     assert 'if clean == "archive":' in src
     assert 'if clean == "speak":' in src
+    assert 'if clean == "press":' in src
     assert 'if clean.startswith("speak/") and clean.count("/") == 1:' in src
     assert "return _STATIC_SSR.get(clean)" in src
 

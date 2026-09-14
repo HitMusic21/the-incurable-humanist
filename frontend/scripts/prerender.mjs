@@ -74,6 +74,13 @@ const STATIC_PAGES = [
       "Audio essays and playlists from Denise Rodriguez Dao's Incurable Humanist newsletter.",
   },
   {
+    path: "/press",
+    crumb: "Press",
+    title: "Press — Denise Rodriguez Dao | The Incurable Humanist",
+    description:
+      "Denise Rodriguez Dao in the press: Observer, The Art Gorgeous, Singulart Magazine, and La Guía de Caracas on Latin American art, migration, and cultural advocacy.",
+  },
+  {
     path: "/privacy",
     title: "Privacy — The Incurable Humanist",
     description:

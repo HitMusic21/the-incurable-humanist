@@ -14,6 +14,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SPEAKING_TOPICS } from "../src/data/speakingTopics.mjs";
+import { PRESS } from "../src/data/press.mjs";
 import { toIsoUtc } from "../src/lib/schemaNodes.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,7 @@ const STATIC_ROUTES = [
   { path: "/archive", priority: "0.9", changefreq: "weekly" },
   { path: "/speak", priority: "0.8", changefreq: "monthly" },
   { path: "/listen", priority: "0.7", changefreq: "monthly" },
+  { path: "/press", priority: "0.6", changefreq: "monthly" },
   { path: "/privacy", priority: "0.3", changefreq: "yearly" },
 ];
 
@@ -210,6 +212,24 @@ async function main() {
     "utf8"
   );
   console.log(`[sitemap] Wrote speaking-topics.json (${SPEAKING_TOPICS.length} topics).`);
+
+  // Press outlets for the Worker's /press server-rendering — same reasoning as
+  // speaking-topics.json above: site.ts is TypeScript the Python Worker cannot
+  // import, and a hand-maintained Python copy would drift the moment an outlet
+  // is added.
+  writeFileSync(
+    resolve(DIST, "press.json"),
+    JSON.stringify(
+      PRESS.map((p) => ({
+        outlet: p.outlet,
+        title: p.title,
+        dek: p.dek,
+        href: p.href,
+      }))
+    ),
+    "utf8"
+  );
+  console.log(`[sitemap] Wrote press.json (${PRESS.length} outlets).`);
 }
 
 main().catch((e) => {

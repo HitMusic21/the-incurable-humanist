@@ -1,78 +1,9 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
 import SocialIconButton from "@/components/SocialIconButton";
-import SubscribeCTA from "@/components/SubscribeCTA";
 import SEO from "@/components/SEO";
 import { SITE } from "@/config/site";
 import { articleGraphForSite } from "@/lib/schema";
 
-function DoorLink({
-  label,
-  sub,
-  to,
-  onClick,
-  isPrimary,
-}: {
-  label: string;
-  sub: string;
-  to?: string;
-  onClick?: () => void;
-  isPrimary?: boolean;
-}) {
-  const base =
-    "group flex flex-col items-start justify-between h-full w-full text-left rounded-2xl border border-line/60 bg-white/60 hover:bg-white transition-all duration-300 px-6 py-6 md:px-7 md:py-7 hover:border-accent/40 hover:shadow-[0_16px_40px_rgba(110,85,128,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
-  const content = (
-    <>
-      <div>
-        <div
-          className={`text-[11px] uppercase tracking-[0.18em] mb-3 font-medium ${
-            isPrimary ? "text-accent" : "text-muted-ink"
-          }`}
-        >
-          {isPrimary ? "Start here" : "Also"}
-        </div>
-        <div className="font-serif text-[24px] md:text-[28px] text-ink group-hover:text-accent transition-colors leading-tight">
-          {label}
-        </div>
-        <div className="mt-2 text-[14px] md:text-[15px] text-muted-ink leading-snug">
-          {sub}
-        </div>
-      </div>
-      <div className="mt-6 inline-flex items-center gap-2 text-[14px] text-accent font-medium">
-        <span className="underline decoration-2 decoration-accent/30 group-hover:decoration-accent underline-offset-4 transition-colors">
-          Open the door
-        </span>
-        <svg
-          className="w-4 h-4 transition-transform group-hover:translate-x-1"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
-    </>
-  );
-  if (to) {
-    return (
-      <Link to={to} className={base}>
-        {content}
-      </Link>
-    );
-  }
-  return (
-    <button onClick={onClick} className={base}>
-      {content}
-    </button>
-  );
-}
-
 function HeroBlock() {
-  // Pre-expanded so the subscribe form is visible on first paint — primary CTA
-  // for the funnel. The "doors" affordance stays for users who prefer to browse.
-  const [showRead, setShowRead] = useState(true);
-
   return (
     <section className="min-h-screen bg-bg relative overflow-hidden">
       {/* The portrait column is capped at 1.1fr (not 1.5fr) and the whole grid
@@ -136,40 +67,18 @@ function HeroBlock() {
 
               <div className="mt-4 sm:mt-5 mb-4 sm:mb-5 w-16 h-px bg-gradient-to-r from-line to-transparent" />
 
+              {/* heroTagline, not positioning: the latter still carries
+                  "— and what gets inherited anyway" for meta descriptions and
+                  JSON-LD, which Denise kept. Only the visible copy changed. */}
               <p className="text-[17px] sm:text-[21px] lg:text-[20px] xl:text-[22px] italic text-ink/70 leading-relaxed font-light max-w-md">
-                {SITE.positioning}
+                {SITE.heroTagline}
               </p>
 
-              {/* Three doors */}
-              <div className="mt-8 sm:mt-9 lg:mt-10 grid gap-3 sm:grid-cols-3">
-                <DoorLink
-                  isPrimary
-                  label="Read"
-                  sub="The newsletter and the archive."
-                  onClick={() => setShowRead((v) => !v)}
-                />
-                <DoorLink
-                  label="Listen"
-                  sub="Audio essays and playlists."
-                  to="/listen"
-                />
-                <DoorLink
-                  label="Book"
-                  sub="Speaking engagements."
-                  to="/speak"
-                />
-              </div>
-
-              {showRead && (
-                <div className="mt-6">
-                  <SubscribeCTA
-                    variant="inline"
-                    placement="home-hero"
-                    headline="Start with the 5-essay reader."
-                    sub="A free PDF, then Sunday-morning essays on grief, migration, and art."
-                  />
-                </div>
-              )}
+              {/* The Read / Listen / Book doors and the 5-essay reader CTA that
+                  sat below them were removed at Denise's request (Aug 2026).
+                  They were coupled: "Read" was a button, not a link, whose only
+                  job was toggling that CTA open. Navigation to those
+                  destinations now lives in the header nav. */}
 
               {/* Social links */}
               <div className="mt-8 sm:mt-9 lg:mt-10 pt-6 sm:pt-7 border-t border-line/40">
@@ -237,7 +146,7 @@ export default function Home() {
     <>
       <SEO
         title="The Incurable Humanist — Denise Rodriguez Dao"
-        description="Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. Read the archive, listen to audio essays, or book a talk."
+        description="Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art — and what gets inherited anyway."
         canonical="https://theincurablehumanist.com/"
         jsonLd={articleGraphForSite({ path: "/", pageName: "Home" })}
       />

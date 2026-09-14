@@ -1,7 +1,6 @@
 import Card from "@/components/Card";
 import SectionTitle from "@/components/SectionTitle";
 import SpotifyPlaylist from "@/components/SpotifyPlaylist";
-import SubscribeCTA from "@/components/SubscribeCTA";
 import SEO from "@/components/SEO";
 import { SITE } from "@/config/site";
 import { withUTM } from "@/lib/utm";
@@ -23,15 +22,7 @@ export default function Listen() {
         jsonLd={articleGraphForSite({ path: "/listen", pageName: "Listen" })}
       />
 
-      <SectionTitle>Listen</SectionTitle>
-
-      <section className="container mt-8 max-w-3xl">
-        <p className="text-center text-[16px] md:text-[17px] italic text-muted-ink leading-relaxed">
-          {/* AEO-quotable intro. */}
-          Denise Rodriguez Dao reads her own essays and curates a playlist of the music that
-          runs alongside them. Grief and migration have a soundtrack; so does the writing.
-        </p>
-      </section>
+      <SectionTitle>Listening</SectionTitle>
 
       {/* Audio essays */}
       <section className="container mt-14 max-w-4xl">
@@ -40,8 +31,8 @@ export default function Listen() {
         </h2>
         <Card className="p-8 md:p-10 text-center">
           <p className="text-[16px] text-muted-ink leading-relaxed mb-6">
-            Every essay is available in audio. Denise reads each piece herself — the same
-            voice, whether you prefer to read or listen.
+            Every essay is also available in audio, read by Denise&mdash;whether you prefer
+            to read or listen.
           </p>
           <a
             href={substackAudioUrl}
@@ -57,7 +48,7 @@ export default function Listen() {
       {/* Spotify playlist — feature-flagged */}
       <section className="container mt-14 max-w-4xl">
         <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
-          Playlist
+          Playlists
         </h2>
         {SITE.spotifyPlaylistId ? (
           <Card className="p-4 md:p-6">
@@ -79,15 +70,9 @@ export default function Listen() {
         )}
       </section>
 
-      {/* End CTA */}
-      <section className="container mt-16 max-w-3xl pb-20 md:pb-28">
-        <SubscribeCTA
-          variant="end-of-post"
-          placement="listen-footer"
-          headline="New essay every Sunday."
-          sub="Read it or listen to it. Free, delivered by Substack."
-        />
-      </section>
+      {/* The "New essay every Sunday." subscribe box was removed at Denise's
+          request (Aug 2026). The page now ends after the playlist. */}
+      <div className="pb-20 md:pb-28" />
     </>
   );
 }

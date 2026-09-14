@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Card from "@/components/Card";
 import SectionTitle from "@/components/SectionTitle";
-import PressItemCard from "@/components/PressItemCard";
 import SubscribeCTA from "@/components/SubscribeCTA";
 import SEO from "@/components/SEO";
 import { SITE } from "@/config/site";
@@ -57,27 +56,60 @@ export default function Archive() {
     })
   );
 
+  // Tagged so Substack signups originating here are distinguishable from the
+  // footer link and the on-site form, as every other outbound Substack link is.
+  const substackSubscribeLink = withUTM(SITE.substackSubscribeUrl, {
+    source: "website",
+    medium: "cta",
+    campaign: "writing-subscribe",
+    content: "writing-header",
+  });
+
   return (
     <>
+      {/* Labelled "Writing" as of Aug 2026; the URL stays /archive, which is
+          where the site's inbound links point and which is the breadcrumb
+          parent of every essay. The label changed, the path did not. */}
       <SEO
-        title="Archive — The Incurable Humanist"
-        description="A curated archive of essays by Denise Rodriguez Dao on grief, migration, and art. Start with the essays that most fully express the work, then read the full collection."
+        title="Writing — The Incurable Humanist"
+        description="Essays by Denise Rodriguez Dao on grief, migration, and art. Start with the essays that most fully express the work, then read the full collection."
         canonical="https://theincurablehumanist.com/archive"
         jsonLd={[
-          ...articleGraphForSite({ path: "/archive", pageName: "Archive" }),
+          ...articleGraphForSite({ path: "/archive", pageName: "Writing" }),
           ...onSiteJsonLd,
         ]}
       />
 
-      <SectionTitle>Archive</SectionTitle>
+      <SectionTitle>Writing</SectionTitle>
 
       <section className="container mt-8 max-w-4xl">
         <p className="text-center text-[16px] md:text-[17px] italic text-muted-ink max-w-2xl mx-auto leading-relaxed">
           {/* AEO-quotable intro paragraph. */}
           Denise Rodriguez Dao writes The Incurable Humanist — a weekly newsletter on grief,
           migration, and art. Below: the essays that most fully express the work, followed by
-          the latest pieces and a note on press coverage.
+          the latest pieces.
         </p>
+      </section>
+
+      {/* Outbound Substack subscribe. Sits alongside the on-site form below
+          rather than replacing it — that form feeds /api/leads/subscribe with
+          double opt-in, and those subscribers would not exist if every reader
+          were sent straight to Substack. Hand-rolled because SubscribeCTA
+          renders a form and PillButton has no external-href variant; classes
+          match the outbound button precedent on /listen. */}
+      <section className="container mt-10 max-w-3xl text-center">
+        <p className="text-[17px] md:text-[18px] text-ink leading-relaxed">
+          Subscribe to <em>The Incurable Humanist</em> — a weekly newsletter on grief,
+          migration and art.
+        </p>
+        <a
+          href={substackSubscribeLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 inline-flex items-center justify-center gap-2 px-6 h-12 rounded-pill bg-accent2 text-white shadow-soft hover:brightness-105 active:brightness-95 transition font-medium whitespace-nowrap cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          Subscribe on Substack
+        </a>
       </section>
 
       {/* Primary CTA — above the fold of the archive list. Highest-intent surface. */}
@@ -202,25 +234,18 @@ export default function Archive() {
         />
       </section>
 
-      {/* In the press */}
-      <section className="container mt-20 max-w-5xl pb-20 md:pb-28">
-        <h2 className="font-serif text-accent2 text-[26px] md:text-[30px] mb-6 text-center">
-          In the press
-        </h2>
-        <div className="space-y-8 md:space-y-10">
-          {SITE.press.map((p) => (
-            <PressItemCard key={p.title} {...p} />
-          ))}
-        </div>
-
-        <div className="mt-14">
-          <SubscribeCTA
-            variant="end-of-post"
-            placement="archive-footer"
-            headline="Keep reading."
-            sub="One essay a week. No spam. Substack delivers it."
-          />
-        </div>
+      {/* The "In the press" cards that used to sit here moved to /press when
+          that page was reinstated (Aug 2026). This end-of-page subscribe CTA
+          was nested inside that block and deliberately stays — removing the
+          section wholesale would have silently dropped a conversion surface
+          from the essay index. */}
+      <section className="container mt-20 max-w-3xl pb-20 md:pb-28">
+        <SubscribeCTA
+          variant="end-of-post"
+          placement="archive-footer"
+          headline="Keep reading."
+          sub="One essay a week. No spam. Substack delivers it."
+        />
       </section>
     </>
   );

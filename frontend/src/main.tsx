@@ -11,6 +11,7 @@ import Speak from "./pages/Speak";
 import Listen from "./pages/Listen";
 import Links from "./pages/Links";
 import Subscribed from "./pages/Subscribed";
+import Press from "./pages/Press";
 import Privacy from "./pages/Privacy";
 import EssayDetail from "./pages/EssayDetail";
 import TopicLanding from "./pages/TopicLanding";
@@ -65,7 +66,10 @@ const router = createBrowserRouter([
       { path: "admin", element: <Navigate to="/admin/stories" replace /> },
       // Legacy URL redirects — preserve inbound link equity.
       { path: "newsletter", element: <Navigate to="/" replace /> },
-      { path: "press", element: <Navigate to="/archive" replace /> },
+      // /press was retired and redirected to /archive, where the press cards
+      // lived. Reinstated as a real page in Aug 2026 — the matching entry in
+      // the Worker's _REDIRECTS was removed too, or its 301 would fire first.
+      { path: "press", element: <Press /> },
       { path: "contact", element: <Navigate to="/speak" replace /> },
       { path: "*", element: <NotFound /> }
     ]
