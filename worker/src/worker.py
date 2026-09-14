@@ -157,7 +157,8 @@ async def _resolve_author_id(db, request_env=None) -> int:
 
 async def _run_sync(db, request_env=None) -> dict:
     author_id = await _resolve_author_id(db, request_env)
-    return await sync_from_feed(db, author_id)
+    # settings carries the env binding so the sync can read INDEXNOW_KEY.
+    return await sync_from_feed(db, author_id, settings=request_env or env)
 
 
 @app.post("/api/stories/sync")

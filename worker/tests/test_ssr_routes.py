@@ -132,3 +132,37 @@ def test_dispatch_mirrors_source():
 
     # SSR must stay an enhancement: a D1 failure serves the shell, never a 500.
     assert "SSR failed for" in src
+
+
+# --- IndexNow ----------------------------------------------------------------
+
+
+def test_indexnow_is_wired_into_the_sync():
+    """New and edited essays are announced, not just left for a crawler.
+
+    IndexNow is a push protocol consumed by Bing, Yandex, Seznam and Naver.
+    Google does NOT participate, so this complements the sitemap's lastmod
+    rather than replacing it.
+    """
+    src = (_ROOT / "worker" / "src" / "substack_sync.py").read_text(encoding="utf-8")
+    assert "api.indexnow.org/IndexNow" in src
+    assert "INDEXNOW_KEY" in src
+    # Only rows that actually changed get announced; pinging unchanged essays
+    # burns quota and trains the engines to ignore the feed.
+    assert 'if outcome in ("created", "updated"):' in src
+    # A failed ping must never fail the sync — the essays are already stored
+    # and in the sitemap, so the worst case is the pre-IndexNow status quo.
+    assert "never let a ping break the sync" in src
+
+
+def test_indexnow_key_file_is_published():
+    """IndexNow verifies ownership by fetching {key}.txt from the site root,
+    whose contents must be the key itself."""
+    public = _ROOT / "frontend" / "public"
+    keys = [f for f in public.glob("*.txt") if f.stem not in {"robots"}]
+    assert keys, "no IndexNow key file in frontend/public/"
+    key_file = keys[0]
+    assert key_file.read_text(encoding="utf-8").strip() == key_file.stem, (
+        "key file contents must equal its filename"
+    )
+    assert len(key_file.stem) >= 8, "IndexNow keys must be 8-128 chars"

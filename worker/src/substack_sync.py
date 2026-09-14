@@ -264,10 +264,60 @@ async def upsert_entry(
     return "updated"
 
 
-async def sync_from_feed(db, author_id: int, feed_url: str = DEFAULT_FEED_URL) -> dict:
+async def _ping_indexnow(changed: list[str], settings=None) -> str | None:
+    """Tell IndexNow about essays this run created or updated.
+
+    IndexNow is a push protocol: instead of waiting for a crawler to notice a
+    change, the site announces it. Bing, Yandex, Seznam and Naver consume it and
+    share submissions with each other. Google does NOT participate — for Google
+    the sitemap's lastmod remains the signal — so this speeds up the other
+    engines and is not a substitute for anything.
+
+    Best-effort by design. A failed ping must never fail the sync: the essays
+    are already in D1 and in the sitemap, so the worst case is the pre-IndexNow
+    status quo. Returns a short status string for the sync result, or None when
+    unconfigured.
+    """
+    if not changed:
+        return None
+    key = _setting_from(settings, "INDEXNOW_KEY")
+    if not key:
+        return None  # not configured; silently skip
+
+    host = _setting_from(settings, "SITE_HOST") or "theincurablehumanist.com"
+    payload = {
+        "host": host,
+        "key": key,
+        "keyLocation": f"https://{host}/{key}.txt",
+        "urlList": [f"https://{host}/essays/{slug}" for slug in changed][:10000],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post("https://api.indexnow.org/IndexNow", json=payload)
+        # 200 accepted, 202 accepted-pending-key-validation. Both are fine.
+        return f"indexnow {resp.status_code} ({len(changed)} urls)"
+    except Exception as exc:  # noqa: BLE001 - never let a ping break the sync
+        return f"indexnow failed: {type(exc).__name__}"
+
+
+def _setting_from(settings, name: str) -> str | None:
+    """Read a var/secret off the env binding, mirroring worker.py's _setting."""
+    if settings is None:
+        return None
+    value = getattr(settings, name, None)
+    return None if value is None else str(value)
+
+
+async def sync_from_feed(
+    db, author_id: int, feed_url: str = DEFAULT_FEED_URL, settings=None
+) -> dict:
     """Sync the ~20 posts Substack exposes over RSS. Safe to run hourly."""
     created = updated = skipped = 0
     errors: list[str] = []
+    # Slugs this run actually changed, for the IndexNow ping below. Only
+    # created/updated rows qualify — announcing an unchanged essay wastes
+    # the quota and teaches the engines to ignore us.
+    changed: list[str] = []
 
     async with httpx.AsyncClient(headers=HTTP_HEADERS, timeout=30.0, follow_redirects=True) as client:
         response = await client.get(feed_url)
@@ -309,7 +359,22 @@ async def sync_from_feed(db, author_id: int, feed_url: str = DEFAULT_FEED_URL) -
                     updated += 1
                 else:
                     skipped += 1
+                if outcome in ("created", "updated"):
+                    row = await _query(
+                        db, "SELECT slug FROM story WHERE source_url = ?", link
+                    )
+                    if row and row[0].get("slug"):
+                        changed.append(row[0]["slug"])
             except Exception as exc:  # noqa: BLE001 - one bad post must not abort the batch
                 errors.append(f"{link}: {exc}")
 
-    return {"created": created, "updated": updated, "skipped": skipped, "errors": errors}
+    result = {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+    }
+    status = await _ping_indexnow(changed, settings)
+    if status:
+        result["indexnow"] = status
+    return result
