@@ -582,6 +582,15 @@ def _finish(body: bytes, status: int, upstream_headers, clean: str) -> Response:
     elif headers.get("content-type", "").startswith("text/html") or not clean:
         headers["cache-control"] = _HTML_CACHE
 
+    # The asset server sends a bare "text/html" with no charset. Browsers fall
+    # back to the document's <meta charset>, but the HTTP header takes
+    # precedence for consumers that read it — and essays carry accented names
+    # ("Andrés Bello"), em-dashes and curly quotes that garble if a client
+    # guesses the encoding. Declare it explicitly.
+    content_type = headers.get("content-type", "")
+    if content_type.startswith("text/html") and "charset=" not in content_type.lower():
+        headers["content-type"] = f"{content_type}; charset=utf-8"
+
     for key, value in _SECURITY_HEADERS.items():
         headers[key.lower()] = value
     return Response(content=body, status_code=status, headers=headers)
