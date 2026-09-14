@@ -6,13 +6,19 @@
 // the merged About card, the removed door links) only exist post-hydration.
 //
 //   node scripts/verify-ia-changes.mjs [baseUrl]      # default http://localhost:8787
+//   BASE=https://theincurablehumanist.com node scripts/verify-ia-changes.mjs
+//
+// BASE is honoured as well as the positional arg. It used to be ignored, and
+// the mobile section below hardcoded localhost:8787 rather than reading either
+// — so a run that looked like it was testing production silently tested a
+// local worker instead, and only passed because one happened to be running.
 //
 // Screenshots land in /tmp/tih-verify/ for eyeballing the layout.
 
 import { chromium, devices } from "playwright";
 import { mkdirSync } from "node:fs";
 
-const BASE = process.argv[2] || "http://localhost:8787";
+const BASE = process.argv[2] || process.env.BASE || "http://localhost:8787";
 const SHOTS = "/tmp/tih-verify";
 mkdirSync(SHOTS, { recursive: true });
 
