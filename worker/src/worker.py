@@ -338,15 +338,62 @@ _STATIC_SSR = {
         '<a href="/speak">Speak</a> · <a href="/listen">Listen</a></p>'
     ),
     "about": _ABOUT_MARKUP,
+    # Mirrors frontend/src/pages/Listen.tsx. The Spotify embed itself is
+    # consent-gated and client-only by design (see SpotifyPlaylist.tsx), so the
+    # server-rendered version describes what is there and links out rather than
+    # pretending to embed a player.
     "listen": (
         "<h1>Listen</h1>"
-        "<p>Audio essays and playlists from The Incurable Humanist.</p>"
+        "<h2>Audio essays</h2>"
+        "<p>Every essay is available in audio. Denise reads each piece herself "
+        "— the same voice, whether you prefer to read or listen.</p>"
+        '<p><a href="https://theincurablehumanist.substack.com">'
+        "Listen on Substack</a></p>"
+        "<h2>Playlist</h2>"
+        "<p>A curated playlist tied to the essays — the music that runs "
+        "alongside the writing.</p>"
         '<p><a href="/archive">Read the essays instead</a></p>'
     ),
+    # The privacy policy is mirrored in full rather than summarised. A crawler
+    # or an AI system checking how this site handles data should be able to read
+    # the actual commitments, not a one-line teaser — and a policy page is a
+    # trust signal precisely because it is specific. Keep this in step with
+    # frontend/src/pages/Privacy.tsx, which is itself tied to what
+    # src/lib/analytics.ts actually does.
     "privacy": (
         "<h1>Privacy</h1>"
-        "<p>How The Incurable Humanist handles analytics, cookies, and newsletter "
-        "data — what is collected, why, and how to opt out.</p>"
+        "<p>This site is a personal publication. It collects as little as "
+        "possible, and nothing at all until you say yes.</p>"
+        "<h2>Analytics and cookies</h2>"
+        "<p>Nothing is tracked until you accept the banner. If you decline, or "
+        "simply ignore it, no analytics or marketing scripts are loaded and the "
+        "site works exactly the same.</p>"
+        "<p>If you accept, this site uses PostHog for product analytics (which "
+        "pages are read, which links are followed) and loads Google Analytics 4, "
+        "the Meta Pixel, and the TikTok Pixel. Those three are advertising tools "
+        "and are only ever injected after consent — they are not present in the "
+        "page otherwise.</p>"
+        "<p>Your choice is stored in your browser's local storage under the key "
+        "tih_consent_v1 and expires after twelve months, at which point you will "
+        "be asked again.</p>"
+        "<h2>The newsletter</h2>"
+        "<p>If you subscribe, your email address is stored so the newsletter can "
+        "be sent to you, and the referring page and any campaign parameters in "
+        "the link you arrived from are recorded so it is possible to know which "
+        "writing brought people here. Delivery is handled by SendGrid. Every "
+        "email includes an unsubscribe link, and unsubscribing is honoured "
+        "immediately.</p>"
+        "<h2>What is never done</h2>"
+        "<p>Your data is not sold and it is not shared with anyone beyond the "
+        "services named above, each of which is used only to run this site. "
+        "There is no advertising network buying this list.</p>"
+        "<h2>Changing your mind</h2>"
+        "<p>To withdraw consent, clear this site's data in your browser settings "
+        "and the banner will appear again on your next visit. To be removed from "
+        "the newsletter, use the unsubscribe link in any email. For anything "
+        'else — including a request to delete data already held — write to '
+        '<a href="mailto:hello@theincurablehumanist.com">'
+        "hello@theincurablehumanist.com</a>.</p>"
     ),
 }
 
