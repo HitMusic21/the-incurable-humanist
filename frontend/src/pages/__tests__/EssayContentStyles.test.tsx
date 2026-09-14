@@ -49,7 +49,7 @@ function styleOf(el: Element): CSSStyleDeclaration {
  * the assertions below encode *why* each rule exists.
  */
 const ESSAY_CSS = `
-.essay-content p { margin-bottom: 1.5em; text-align: justify; hyphens: auto; }
+.essay-content p { margin-bottom: 1.5em; }
 .essay-content p:last-child { margin-bottom: 0; }
 .essay-content figure { margin: 2.5rem 0; }
 .essay-content figure a { display: block; }
@@ -82,9 +82,14 @@ describe(".essay-content styles", () => {
 
   const q = (sel: string) => document.querySelector(`.essay-content ${sel}`)!;
 
-  it("justifies body prose and spaces paragraphs", () => {
+  it("leaves body prose ragged-right and unhyphenated", () => {
+    // Essays were justified + hyphenated per the old long-form convention.
+    // The author reported it as words being cut off ("be-come",
+    // "overthink-ing") — hyphens-auto breaks words at line ends, and
+    // text-justify without it produces rivers of white space, so both went.
     const p = q("p");
-    expect(styleOf(p).textAlign).toBe("justify");
+    expect(styleOf(p).textAlign).not.toBe("justify");
+    expect(styleOf(p).hyphens).not.toBe("auto");
     expect(styleOf(p).marginBottom).toBe("1.5em");
   });
 

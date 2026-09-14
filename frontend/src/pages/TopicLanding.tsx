@@ -52,7 +52,9 @@ export default function TopicLanding() {
   const bookingBody = encodeURIComponent(
     `Hi Denise,\n\nI'd like to invite you to speak on "${topic.title}" at [event / organization] on [date]. A few details:\n\n• Audience: \n• Format: \n• Location: \n• Budget: \n\nLooking forward.\n`
   );
-  const mailto = `mailto:${SITE.bookingEmail}?subject=${bookingSubject}&body=${bookingBody}`;
+  // info@, matching /speak — these are the same speaking enquiry and
+  // splitting them across two inboxes would lose half of them.
+  const mailto = `mailto:${SITE.email}?subject=${bookingSubject}&body=${bookingBody}`;
 
   return (
     <>
@@ -66,7 +68,7 @@ export default function TopicLanding() {
         ]}
       />
 
-      <SectionTitle>Speak</SectionTitle>
+      <SectionTitle>Speaking</SectionTitle>
 
       <section className="container mt-8 max-w-3xl">
         <div className="text-[11px] uppercase tracking-[0.18em] text-accent mb-3 font-medium text-center">
@@ -82,7 +84,7 @@ export default function TopicLanding() {
 
       <section className="container mt-12 max-w-4xl">
         <Card className="p-8 md:p-12">
-          <p className="text-[17px] md:text-[18px] text-ink leading-[1.75] max-w-[62ch] mx-auto text-justify hyphens-auto [text-wrap:pretty]">
+          <p className="text-[17px] md:text-[18px] text-ink leading-[1.75] max-w-[62ch] mx-auto [text-wrap:pretty]">
             {topic.blurb}
           </p>
 
@@ -95,7 +97,7 @@ export default function TopicLanding() {
                   topic: topic.slug,
                 })
               }
-              aria-label={`Email ${SITE.bookingEmail} — ${topic.title}`}
+              aria-label={`Email ${SITE.email} — ${topic.title}`}
               className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-pill bg-accent2 text-white shadow-soft hover:brightness-105 active:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent2 transition font-medium whitespace-nowrap cursor-pointer"
             >
               Email Denise about this talk

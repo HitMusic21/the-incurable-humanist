@@ -16,22 +16,31 @@ export const SITE = {
     { label: "LISTENING", to: "/listen" },
     { label: "PRESS", to: "/press" }
   ],
+  // Single contact address. `bookingEmail: "booking@…"` was removed Sep 2026
+  // when Denise redirected speaking enquiries here — /speak and the four
+  // /speak/:topic pages had been its only consumers.
   email: "info@theincurablehumanist.com",
-  bookingEmail: "booking@theincurablehumanist.com",
   substackUrl: "https://theincurablehumanist.substack.com",
   substackSubscribeUrl: "https://theincurablehumanist.substack.com/subscribe",
   // Playlist ID only — Listen.tsx builds the /embed/ URL from it. Storing the
   // share URL instead is the common mistake: pasted straight into an iframe it
   // renders the full web player rather than the embed.
-  spotifyPlaylistId: "0G5Z5masq2ajzCP6nUHCBd" as string | null,
-  youtubeUrl: null as string | null,
+  spotifyPlaylistId: "4eXyRJSfghSHfTblbGzB5T" as string | null,
   siteUrl: "https://theincurablehumanist.com",
+  // Rendered as icons by Footer.tsx and Home.tsx, and mirrored into the
+  // Person node's `sameAs` in src/lib/schemaNodes.mjs — add to both or the
+  // entity graph drifts from what the page shows.
   socials: {
     instagram: "https://www.instagram.com/theincurablehumanist/",
     tiktok: "https://www.tiktok.com/@theincurablehumanist",
     facebook: "https://www.facebook.com/profile.php?id=61581842306462",
     linkedin: "https://www.linkedin.com/company/the-incurable-humanist/about/",
-    x: "https://x.com/TheIncurableHum"
+    x: "https://x.com/TheIncurableHum",
+    youtube: "https://www.youtube.com/@TheIncurableHumanist",
+    // Denise sent a pin.it link, which is a BOARD INVITE — it redirects to
+    // ?invite_code=…&sender=… and would invite every visitor to collaborate
+    // on her board. This is the bare profile the invite resolves to.
+    pinterest: "https://www.pinterest.com/0ab2scauec8t3vil0u5l871wkeudxo/"
   },
   // Press coverage lives in src/data/press.mjs so the Node build scripts and
   // the Python Worker can read the same list — see that file's header.
@@ -101,10 +110,15 @@ export const SITE = {
         dek: "A conversation between the gallery and the courtroom: representing artists, gallerists, and cultural workers navigating displacement."
       }
     ],
-    // TODO(asset): add press-kit.pdf to /public/ once Denise provides it.
-    pressKitUrl: "/press-kit.pdf",
-    // TODO(asset): add Voices for Venezuela clip URL once recording is available.
-    voicesForVenezuelaUrl: null as string | null
+    // The press-kit button (and its never-created /press-kit.pdf, which 404'd
+    // for as long as it shipped) was removed at Denise's request, Sep 2026.
+    //
+    // MUST be the youtube-nocookie EMBED url, not a watch?v= link: YouTube
+    // serves watch pages with X-Frame-Options: SAMEORIGIN, so an iframe
+    // pointed at one renders a silently blank box. Same trap as the Spotify
+    // share-vs-embed URL noted above.
+    voicesForVenezuelaUrl:
+      "https://www.youtube-nocookie.com/embed/wimKS7SzHwE" as string | null
   },
   // SEO landing pages per speaking topic — each becomes /speak/<slug> with
   // its own Article/Service JSON-LD. Single source of truth in

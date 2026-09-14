@@ -41,6 +41,8 @@ export const SAME_AS = [
   "https://www.linkedin.com/company/the-incurable-humanist/about/",
   "https://x.com/TheIncurableHum",
   "https://theincurablehumanist.substack.com",
+  "https://www.youtube.com/@TheIncurableHumanist",
+  "https://www.pinterest.com/0ab2scauec8t3vil0u5l871wkeudxo/",
 ];
 
 export function personNode() {
@@ -52,9 +54,9 @@ export function personNode() {
     familyName: "Rodriguez Dao",
     url: `${SITE_URL}/about`,
     image: `${SITE_URL}/founder.jpg`,
-    jobTitle: "Writer, Business Immigration Consultant",
+    jobTitle: "Writer, Immigration Consultant",
     description:
-      "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a business immigration consultant working with artists, collectors, entrepreneurs, and leaders across art and entertainment.",
+      "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is an immigration consultant working with artists, collectors, entrepreneurs, and leaders across art and entertainment.",
     knowsAbout: ["Grief", "Migration", "Art", "Latin American Art", "Diaspora"],
     alumniOf: [
       { "@type": "EducationalOrganization", name: "Christie's Education, New York" },

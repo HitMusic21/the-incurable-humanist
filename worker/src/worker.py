@@ -317,14 +317,18 @@ async def _ssr_archive(db) -> str:
 _ABOUT_MARKUP = (
     "<h1>About — Denise Rodriguez Dao</h1>"
     "<p>Welcome to the curious world of <em>The Incurable Humanist</em>, a space "
-    "to explore grief, migration, and art — and what gets inherited anyway.</p>"
+    "to explore grief, migration, and art.</p>"
     "<p>Having lived in Caracas, Mexico City, and now based in New York City, "
     "Denise Rodriguez Dao writes about memory, migration, and the lives behind "
-    "the statistics. She is a writer and business immigration consultant working "
-    "with artists, collectors, entrepreneurs, and leaders across art and "
+    "the statistics. She is an immigration consultant with experience in "
+    "contemporary art and the creative industries, working with artists, "
+    "collectors, entrepreneurs, musicians, and leaders across art and "
     "entertainment.</p>"
+    "<p>She holds a JD from Universidad Católica Andrés Bello and a Master's "
+    "degree in Modern and Contemporary Art and the Market from Christie's "
+    "Education New York.</p>"
     '<p><a href="/archive">Read the writing</a> · '
-    '<a href="/speak">Speaking topics and booking</a></p>'
+    '<a href="/speak">Speaking and booking</a></p>'
 )
 
 # Marketing routes whose server-rendered body needs no D1 query.
@@ -483,12 +487,9 @@ async def _ssr_press(request_env) -> str | None:
         for i in items
         if i.get("href")
     )
-    return (
-        "<h1>Press</h1>"
-        "<p>Writing and conversations about Denise Rodriguez Dao's work in Latin "
-        "American art, migration, and cultural advocacy.</p>"
-        f"<ul>{entries}</ul>"
-    )
+    # The intro line that sat here was removed at Denise's request (Sep 2026),
+    # matching frontend/src/pages/Press.tsx — the heading runs into the cards.
+    return f"<h1>Press</h1><ul>{entries}</ul>"
 
 
 async def _render_markup(request_env, clean: str) -> str | None:
@@ -589,6 +590,13 @@ _SECURITY_HEADERS = {
 #                                             enabling it needs no CSP change)
 #   open.spotify.com                          SpotifyPlaylist.tsx iframe; omit
 #                                             it and /listen breaks
+#   *.youtube-nocookie.com / *.youtube.com    the Voices for Venezuela reel on
+#                                             /speak. The embed is served from
+#                                             youtube-nocookie.com but the
+#                                             player redirects to youtube.com
+#                                             for some clips, so both are
+#                                             listed; omit them and the reel
+#                                             renders as a blank frame.
 #
 # 'unsafe-inline' is unavoidable in style-src (React inline styles + Tailwind)
 # and needed in script-src for now, because analytics.ts builds the Meta and
@@ -606,7 +614,8 @@ _CSP = (
     "connect-src 'self' https://us.i.posthog.com "
     "https://www.google-analytics.com https://analytics.tiktok.com "
     "https://connect.facebook.net; "
-    "frame-src https://open.spotify.com; "
+    "frame-src https://open.spotify.com https://www.youtube-nocookie.com "
+    "https://www.youtube.com; "
     "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; "
     "object-src 'none'"
 )

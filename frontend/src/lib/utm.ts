@@ -8,6 +8,7 @@ export type UtmSource =
   | "instagram"
   | "facebook"
   | "youtube"
+  | "pinterest"
   | "linkedin"
   | "x"
   | "substack"
@@ -65,7 +66,8 @@ export type StoredUtm = {
 const STORAGE_KEY = "tih_utm";
 
 const KNOWN_SOURCES = new Set<string>([
-  "website", "tiktok", "instagram", "facebook", "youtube", "linkedin",
+  "website", "tiktok", "instagram", "facebook", "youtube", "pinterest",
+  "linkedin",
   "x", "substack", "newsletter", "email", "press", "bio-link",
 ]);
 

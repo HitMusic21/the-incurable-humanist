@@ -101,6 +101,21 @@ async function main() {
   check("portrait has width attr", !!(await img.first().getAttribute("width")));
   check("portrait has height attr", !!(await img.first().getAttribute("height")));
   check("all six paragraphs present", /room for another incurable humanist/i.test(aboutText));
+  check("subscribe box removed", !/Follow Denise's writing/i.test(aboutText));
+  check("copy says 'immigration consultant'", /I am an immigration consultant/i.test(aboutText));
+  check("no 'business immigration'", !/business immigration/i.test(aboutText));
+  check("prose reads 'Come in!'", /Come in!/.test(aboutText));
+
+  // "DO NOT CUT OFF WORDS!" — Denise was reading hyphenated line breaks as
+  // truncation. Justification stretches spaces; hyphens-auto is what actually
+  // breaks words. Both were dropped, so assert on computed style: a class-name
+  // check would miss the .essay-content CSS rule that styles essay bodies.
+  const proseStyle = await page.locator("section p").first().evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { textAlign: s.textAlign, hyphens: s.hyphens || s.webkitHyphens };
+  });
+  check("prose is not justified", proseStyle.textAlign !== "justify", proseStyle.textAlign);
+  check("prose is not auto-hyphenated", proseStyle.hyphens !== "auto", proseStyle.hyphens);
   await page.screenshot({ path: `${SHOTS}/about.png`, fullPage: true });
 
   // ---- Writing ----------------------------------------------------------
@@ -118,8 +133,37 @@ async function main() {
     ((await substack.getAttribute("href")) || "").includes("utm_source"));
   check("press cards moved off Writing", !/In the press/i.test(writingText));
   check("stale 'press coverage' line gone", !/press coverage/i.test(writingText));
-  check("subscribe CTA survived the move", /Keep reading/i.test(writingText));
+  // Sep 2026: Denise removed both on-page subscribe boxes. The outbound
+  // Substack button above is now the only subscribe surface on this page.
+  check("'Keep reading' CTA removed", !/Keep reading/i.test(writingText));
+  check("'Read the next one' CTA removed", !/Read the next one/i.test(writingText));
+  check("AEO intro paragraph removed", !/Below: the essays/i.test(writingText));
   await page.screenshot({ path: `${SHOTS}/writing.png`, fullPage: false });
+
+  // ---- Speaking ---------------------------------------------------------
+  // This page had no coverage at all before Sep 2026, despite being the most
+  // heavily edited in that round.
+  console.log("\nSPEAKING (/speak)");
+  await page.goto(`${BASE}/speak`, { waitUntil: "networkidle" });
+  check("h1 reads Speaking", (await page.locator("h1").first().innerText()).trim() === "Speaking");
+  check("title says Speaking", (await page.title()).startsWith("Speaking"));
+  const speakText = await page.locator("body").innerText();
+  check("subtitle clause removed", !/diaspora-adjacent/i.test(speakText));
+  check("press kit button removed", !/press kit/i.test(speakText));
+  check("response-time line removed", !/3 business days/i.test(speakText));
+  check("'Featured in' section removed", !/Featured in/i.test(speakText));
+  check("'Signature topics' section removed", !/Signature topics/i.test(speakText));
+  check("'About Denise' card removed", !/About Denise/i.test(speakText));
+  check("subscribe CTAs removed", !/Denise's writing/i.test(speakText));
+  check("placeholder caption removed", !/\[organization/i.test(speakText));
+  check("booking email is info@", /info@theincurablehumanist\.com/.test(speakText));
+  check("old booking@ address gone", !/booking@theincurablehumanist\.com/.test(speakText));
+  // The reel sits behind a consent facade, so the iframe is absent until the
+  // visitor clicks — asserting on the iframe directly would fail by design.
+  const reelFacade = page.locator('button[aria-label*="Voices for Venezuela"]');
+  check("YouTube reel present behind consent facade", (await reelFacade.count()) === 1);
+  check("'Coming soon' placeholder gone", !/Coming soon/i.test(speakText));
+  await page.screenshot({ path: `${SHOTS}/speaking.png`, fullPage: true });
 
   // ---- Listening --------------------------------------------------------
   console.log("\nLISTENING");
@@ -143,9 +187,47 @@ async function main() {
     check(`lists ${outlet}`, pressText.includes(outlet));
   }
   check("Click Magazine NYC dropped", !pressText.includes("Click Magazine"));
+  check("intro line removed (Sep 2026)",
+    !/Writing and conversations about/i.test(pressText));
   const outboundCount = await page.locator('a[target="_blank"][rel*="noopener"]').count();
   check("outlet links open safely", outboundCount >= 4, `found ${outboundCount}`);
   await page.screenshot({ path: `${SHOTS}/press.png`, fullPage: true });
+
+  // ---- Footer "Connect" -------------------------------------------------
+  console.log("\nFOOTER");
+  for (const [label, host] of [
+    ["YouTube", "youtube.com"],
+    ["Pinterest", "pinterest.com"],
+  ]) {
+    const link = page.locator(`footer a[aria-label="${label}"]`);
+    check(`footer links ${label}`, (await link.count()) === 1);
+    const href = (await link.first().getAttribute("href")) || "";
+    check(`${label} href points at ${host}`, href.includes(host), href);
+    // Denise sent a pin.it board INVITE; shipping it would invite every
+    // visitor to collaborate on her board.
+    check(`${label} is not an invite link`, !/invite_code|pin\.it/.test(href), href);
+  }
+
+  // ---- Essay page -------------------------------------------------------
+  console.log("\nESSAY");
+  const firstEssay = await page.evaluate(async (base) => {
+    const r = await fetch(`${base}/api/stories?status=published&limit=1`);
+    const d = await r.json();
+    return d?.stories?.[0]?.slug ?? null;
+  }, BASE);
+  if (firstEssay) {
+    await page.goto(`${BASE}/essays/${firstEssay}`, { waitUntil: "networkidle" });
+    const essayText = await page.locator("body").innerText();
+    check("essay end-CTA removed", !/Read the next one in your inbox/i.test(essayText));
+    const bodyStyle = await page.locator(".essay-content p").first().evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { textAlign: s.textAlign, hyphens: s.hyphens || s.webkitHyphens };
+    });
+    check("essay body not justified", bodyStyle.textAlign !== "justify", bodyStyle.textAlign);
+    check("essay body not hyphenated", bodyStyle.hyphens !== "auto", bodyStyle.hyphens);
+  } else {
+    check("essay slug resolved from /api/stories", false, "no stories returned");
+  }
 
   // ---- Mobile nav overflow ---------------------------------------------
   console.log("\nMOBILE (iPhone SE, 375px)");

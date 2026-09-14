@@ -29,13 +29,11 @@ export default function Press() {
 
       <SectionTitle>Press</SectionTitle>
 
-      <section className="container mt-8 max-w-4xl">
-        <p className="text-center text-[16px] md:text-[17px] italic text-muted-ink max-w-2xl mx-auto leading-relaxed">
-          Writing and conversations about Denise&rsquo;s work in Latin American art,
-          migration, and cultural advocacy.
-        </p>
-      </section>
-
+      {/* The intro line ("Writing and conversations about Denise's work in
+          Latin American art, migration, and cultural advocacy.") was removed
+          at her request, Sep 2026 — the heading runs straight into the cards.
+          The same sentence is mirrored in _STATIC_SSR["press"] in
+          worker/src/worker.py; both were removed together. */}
       <section className="container mt-12 max-w-5xl pb-20 md:pb-28">
         {SITE.press.length > 0 ? (
           <div className="space-y-8 md:space-y-10">

@@ -275,6 +275,10 @@ def test_csp_ships_report_only_first():
         ("https://connect.facebook.net", "Meta pixel in analytics.ts"),
         ("https://analytics.tiktok.com", "TikTok pixel in analytics.ts"),
         ("https://open.spotify.com", "SpotifyPlaylist.tsx iframe — /listen breaks without it"),
+        (
+            "https://www.youtube-nocookie.com",
+            "Voices for Venezuela reel on /speak — blank frame without it",
+        ),
     ],
 )
 def test_csp_allows_every_origin_the_site_actually_loads(origin, why):

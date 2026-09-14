@@ -32,7 +32,7 @@ Design tokens live in `frontend/tailwind.config.ts`. Colors we use:
 Any prose block that reads like body copy (About page bio, essay body, newsletter card body, founder statement, etc.) MUST use this exact combination:
 
 ```tsx
-<div className="space-y-8 text-[17px] md:text-[18px] leading-[1.75] max-w-[62ch] mx-auto text-justify hyphens-auto [text-wrap:pretty]">
+<div className="space-y-8 text-[17px] md:text-[18px] leading-[1.75] max-w-[62ch] mx-auto [text-wrap:pretty]">
   <p>…</p>
   <p>…</p>
 </div>
@@ -44,8 +44,6 @@ Any prose block that reads like body copy (About page bio, essay body, newslette
 |---|---|---|
 | `max-w-[62ch]` | Constrains the reading measure to ~62 chars per line | `max-w-3xl` = 768px = ~100+ chars at 18px serif. Well past the 65-75ch readability sweet spot. Fatigues the eye. |
 | `mx-auto` | Centers the block in the parent card | `text-center` would center each line — wrong for prose. |
-| `text-justify` | Even left AND right edges | Left-only is fine for casual UI copy. For prospectus prose the symmetric edge is the visual signature of the site. |
-| `hyphens-auto` | Enables browser-native hyphenation | Without it, `text-justify` creates rivers of white space between words on narrow measures. `hyphens-auto` breaks at natural syllable boundaries and smooths the rhythm. |
 | `leading-[1.75]` | Line-height 1.75 for long-form density | `leading-relaxed` (1.625) is fine for UI copy. Long-form serif prose benefits from more air between lines. |
 | `[text-wrap:pretty]` | Modern CSS `text-wrap: pretty` | Avoids widows/orphans (single word on the last line) on Safari 17+ and Chrome 117+. Progressive enhancement — degrades gracefully. |
 | `space-y-8` | Consistent inter-paragraph vertical rhythm | Matches the 32px gap the landing page uses. |
@@ -53,7 +51,8 @@ Any prose block that reads like body copy (About page bio, essay body, newslette
 ### Anti-pattern (do NOT do this)
 
 ```tsx
-{/* BAD — ragged edges, oversized measure, no hyphens, wrong line-height */}
+{/* BAD — oversized measure (max-w-3xl reads edge-to-edge), wrong line-height.
+    Ragged right is fine and now intended; the measure and leading are not. */}
 <div className="space-y-8 text-[17px] md:text-[18px] leading-relaxed max-w-3xl mx-auto">
   <p>Grief is more than mourning the death of a loved one. It is leaving home, it is heartbreak, it is losing who we once were, it is navigating trauma.</p>
 </div>
@@ -77,7 +76,7 @@ Any pill-shaped CTA that MIGHT carry a long label (email address, URL, long phra
 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
   <a
     href={mailto}
-    aria-label={`Email ${SITE.bookingEmail} — Speaking inquiry`}
+    aria-label={`Email ${SITE.email} — Speaking inquiry`}
     className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-pill bg-accent2 text-white shadow-soft hover:brightness-105 active:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent2 transition font-medium whitespace-nowrap cursor-pointer"
   >
     <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">…</svg>
@@ -87,9 +86,8 @@ Any pill-shaped CTA that MIGHT carry a long label (email address, URL, long phra
 </div>
 
 <p className="mt-4 text-[13px] text-muted-ink">
-  Response within 3 business days ·{" "}
-  <a href={`mailto:${SITE.bookingEmail}`} className="underline decoration-muted-ink/40 underline-offset-2 hover:text-accent2 hover:decoration-accent2 transition-colors">
-    {SITE.bookingEmail}
+  <a href={`mailto:${SITE.email}`} className="underline decoration-muted-ink/40 underline-offset-2 hover:text-accent2 hover:decoration-accent2 transition-colors">
+    {SITE.email}
   </a>
 </p>
 ```
@@ -115,7 +113,7 @@ Any pill-shaped CTA that MIGHT carry a long label (email address, URL, long phra
   href={mailto}
   className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-pill bg-accent2 text-white shadow-soft hover:brightness-105 active:brightness-95 transition font-medium"
 >
-  Email {SITE.bookingEmail}
+  Email {SITE.email}
 </a>
 ```
 
@@ -123,7 +121,9 @@ This is what `frontend/src/pages/Speak.tsx` looked like before the 2026-07-19 fi
 
 ### Canonical reference
 
-`frontend/src/pages/Speak.tsx` — the "Bring The Incurable Humanist to your stage" card contains the two-button pair (`Email Denise` + `Press kit (PDF)`). Copy that class list verbatim when introducing a new CTA pair.
+`frontend/src/pages/Speak.tsx` — the "Bring The Incurable Humanist to your stage" card contains the `Email Denise` pill and the trust line below it.
+
+Note (Sep 2026): this used to be a two-button *pair* (`Email Denise` + `Press kit (PDF)`). Denise removed the press-kit button — it pointed at a `/press-kit.pdf` that was never added, so it 404'd for its whole life. The surviving button still carries every rule above, and the `flex-wrap` container is deliberately kept so a second pill can be added back without re-deriving the layout.
 
 ---
 
@@ -156,7 +156,7 @@ Quick scan when reviewing or writing UI code — these are the ones that show up
 | Symptom | Root cause | Fix |
 |---|---|---|
 | Prose block has line lengths >90 chars | Missing `max-w-[62ch]` | Add the canonical prose class list (Convention #1) |
-| Prose has ragged, uneven right edge | Missing `text-justify` + `hyphens-auto` | Add both |
+| Prose words broken across lines with hyphens | `hyphens-auto` re-added | Remove it — ragged-right is intentional (Sep 2026) |
 | Pill button stretched vertically into a tall oval | Long label + fixed `h-12` + no `whitespace-nowrap` | Shorten label, add `whitespace-nowrap`, move full string to trust line (Convention #2) |
 | Two pills crushed together on narrow viewport | Missing `flex-wrap` on parent | Add `flex-wrap` |
 | Icon-only or icon+short-label button reads as "button" in screen reader | Missing `aria-label` | Add descriptive `aria-label` |

@@ -25,7 +25,7 @@ export default function Privacy() {
 
       <section className="container mt-10 pb-20 md:pb-28 max-w-4xl">
         <Card className="p-10 md:p-12 lg:p-14">
-          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] text-justify hyphens-auto [text-wrap:pretty]">
+          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] [text-wrap:pretty]">
             <p>
               This site is a personal publication. It collects as little as possible, and
               nothing at all until you say yes.

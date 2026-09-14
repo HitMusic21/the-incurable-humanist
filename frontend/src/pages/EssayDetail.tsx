@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import SEO from "@/components/SEO";
-import SubscribeCTA from "@/components/SubscribeCTA";
 import Card from "@/components/Card";
 import { API_CONFIG, type StoryDetail as StoryDetailData } from "@/config/api";
 import { articleNode, articleGraphForSite, pageTitle } from "@/lib/schema";
@@ -229,14 +228,12 @@ export default function EssayDetail() {
         )}
       </article>
 
-      <section className="container max-w-3xl pb-24">
-        <SubscribeCTA
-          variant="end-of-post"
-          placement={`essay-${story.slug}-footer`}
-          headline="Read the next one in your inbox."
-          sub="Weekly essays on grief, migration, and art. Start with the free 5-essay reader."
-        />
-      </section>
+      {/* The end-of-essay SubscribeCTA ("Read the next one in your inbox.")
+          was removed at Denise's request (Sep 2026). Essay pages now carry no
+          on-site capture; the exit-intent modal and the footer are the
+          remaining surfaces. This div preserves the spacing that section gave
+          the article above it. */}
+      <div className="pb-24" />
     </>
   );
 }

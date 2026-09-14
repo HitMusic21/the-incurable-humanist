@@ -50,8 +50,10 @@ a {
    blockquote rules exist so the rare post degrades gracefully.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Prose. Justified per the long-form convention in CLAUDE.md. */
-.essay-content p { margin-bottom: 1.5em; text-align: justify; hyphens: auto; }
+/* Prose. Ragged-right, no hyphenation: justified text needs hyphens-auto to
+   avoid rivers of white space, and hyphens-auto breaks words across lines —
+   which the author flagged as words being cut off. Removed both (Sep 2026). */
+.essay-content p { margin-bottom: 1.5em; }
 .essay-content p:last-child { margin-bottom: 0; }
 
 /* Images. Substack nests these as figure > a > picture > source + img.

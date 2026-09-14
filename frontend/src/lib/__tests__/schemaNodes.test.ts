@@ -46,7 +46,7 @@ describe("personNode", () => {
     // a Person with no sameAs. Verified live before the fix: /about's Person
     // had exactly ["@id","@type","name","url"].
     const p = personNode();
-    expect(p.sameAs).toHaveLength(6);
+    expect(p.sameAs).toHaveLength(8);
     expect(p.jobTitle).toBeTruthy();
     expect(p.description).toBeTruthy();
     expect(p.knowsAbout).toBeTruthy();

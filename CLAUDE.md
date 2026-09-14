@@ -207,19 +207,23 @@ Product/brand docs live in **`docs/`** (checked in). An earlier `.claude/docs/` 
 
 The site's visual identity is a **prospectus / literary journal** treatment. Two conventions are load-bearing and should not be regressed:
 
-### 1. Long-form prose measure + justification
+### 1. Long-form prose measure
 
 Any prose block that reads like body copy (About page bio blocks, essays, etc.) MUST use:
 - `max-w-[62ch]` — comfortable serif reading measure (~65-75 chars per line)
 - `mx-auto` — centered in its parent card
-- `text-justify` — symmetric left/right edges (matches the landing-page prospectus treatment)
-- `hyphens-auto` — smooth line-break rhythm
 - `leading-[1.75]` — long-form density
 - `[text-wrap:pretty]` — avoids widows/orphans on Safari + modern Chrome
 
-Canonical example: `frontend/src/pages/About.tsx` (both prose blocks). Copy that class list rather than inventing a new one.
+Canonical example: `frontend/src/pages/About.tsx`. Copy that class list rather than inventing a new one.
 
-**Do NOT** use `max-w-3xl` + `leading-relaxed` + default `text-align: left` for prose — that produces the ragged, edge-to-edge line-lengths the 2026-07-19 fix removed.
+Prose is deliberately **ragged-right and unhyphenated** as of Sep 2026. It was
+justified + hyphenated; the author reported that as words being cut off
+("be-come", "overthink-ing"), which is what `hyphens-auto` does at a 62ch
+measure. `text-justify` went with it, because justified text without
+hyphenation opens rivers of white space. Do not re-add either.
+
+**Do NOT** use `max-w-3xl` + `leading-relaxed` for prose — that produces the ragged, edge-to-edge line-lengths the 2026-07-19 fix removed.
 
 ### 2. Pill CTAs with long labels
 

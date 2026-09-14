@@ -53,7 +53,7 @@ const STATIC_PAGES = [
     path: "/about",
     title: "About — Denise Rodriguez Dao | The Incurable Humanist",
     description:
-      "Denise Rodriguez Dao is a writer and business immigration consultant based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art.",
+      "Denise Rodriguez Dao is a writer and immigration consultant based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art.",
   },
   {
     path: "/archive",
@@ -63,7 +63,7 @@ const STATIC_PAGES = [
   },
   {
     path: "/speak",
-    title: "Speak — Denise Rodriguez Dao | The Incurable Humanist",
+    title: "Speaking — Denise Rodriguez Dao | The Incurable Humanist",
     description:
       "Denise Rodriguez Dao speaks on grief, migration, art, and the Latin American diaspora. Booking cultural centers, universities, and literary events.",
   },
@@ -270,7 +270,7 @@ async function main() {
         websiteNode(),
         breadcrumbNode([
           { name: "Home", path: "/" },
-          { name: "Speak", path: "/speak" },
+          { name: "Speaking", path: "/speak" },
           { name: t.title, path: `/speak/${t.slug}` },
         ]),
         serviceNode({ title: t.title, url, blurb: t.blurb }),

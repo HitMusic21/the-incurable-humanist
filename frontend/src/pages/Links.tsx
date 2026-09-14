@@ -46,7 +46,7 @@ export default function Links() {
 
   const outboundLink = (url: string, content: string) =>
     withUTM(url, {
-      source: (source as "tiktok" | "instagram" | "facebook" | "youtube" | "linkedin" | "x" | "bio-link") ||
+      source: (source as "tiktok" | "instagram" | "facebook" | "youtube" | "pinterest" | "linkedin" | "x" | "bio-link") ||
         "bio-link",
       medium: "bio-link",
       campaign: "links-page",

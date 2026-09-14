@@ -1,7 +1,6 @@
 import SectionTitle from "@/components/SectionTitle";
 import Card from "@/components/Card";
 import SEO from "@/components/SEO";
-import SubscribeCTA from "@/components/SubscribeCTA";
 import { articleGraphForSite } from "@/lib/schema";
 
 export default function About() {
@@ -9,7 +8,7 @@ export default function About() {
     <>
       <SEO
         title="About — Denise Rodriguez Dao | The Incurable Humanist"
-        description="Denise Rodriguez Dao is a writer and business immigration consultant based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art."
+        description="Denise Rodriguez Dao is a writer and immigration consultant based in New York. She writes The Incurable Humanist, a weekly newsletter on grief, migration, and art."
         canonical="https://theincurablehumanist.com/about"
         jsonLd={articleGraphForSite({ path: "/about", pageName: "About" })}
       />
@@ -38,10 +37,11 @@ export default function About() {
             />
           </div>
 
-          {/* Long-form prose treatment per docs/UI_DESIGN_SYSTEM.md: 62ch
-              measure, centred, justified, hyphenated. About is the canonical
-              example of this rule — do not swap it for max-w-3xl. */}
-          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] text-justify hyphens-auto [text-wrap:pretty]">
+          {/* Long-form prose per docs/UI_DESIGN_SYSTEM.md: 62ch measure,
+              centred, ragged-right. Justification and hyphenation were
+              removed Sep 2026 — the author read hyphenated line breaks as
+              words being cut off. Do not swap this for max-w-3xl. */}
+          <div className="max-w-[62ch] mx-auto space-y-8 text-[17px] md:text-[18px] leading-[1.75] [text-wrap:pretty]">
             <p>
               Welcome to the curious world of <em>The Incurable Humanist</em>, a space to
               explore grief, migration, and art.
@@ -68,26 +68,16 @@ export default function About() {
             <p>
               I hold a JD from Universidad Católica Andrés Bello and a Master&rsquo;s degree in
               Modern and Contemporary Art and the Market from Christie&rsquo;s Education New
-              York. I am a business immigration consultant with experience in contemporary art
+              York. I am an immigration consultant with experience in contemporary art
               and the creative industries, where I have worked with artists, collectors,
               entrepreneurs, musicians, and leaders across art and entertainment.
             </p>
 
             <p>
-              I&rsquo;m glad you are here! There is always room for another incurable humanist.
+              Come in! There is always room for another incurable humanist.
             </p>
           </div>
         </Card>
-
-        {/* End-of-post CTA — About is prime intent-to-subscribe surface. */}
-        <div className="mt-12">
-          <SubscribeCTA
-            variant="end-of-post"
-            placement="about-footer"
-            headline="Follow Denise's writing."
-            sub="Weekly essays on grief, migration, and art. Start with the free 5-essay reader."
-          />
-        </div>
       </section>
     </>
   );

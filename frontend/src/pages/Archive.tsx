@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Card from "@/components/Card";
 import SectionTitle from "@/components/SectionTitle";
-import SubscribeCTA from "@/components/SubscribeCTA";
 import SEO from "@/components/SEO";
 import { SITE } from "@/config/site";
 import { API_CONFIG, type StoryPublic } from "@/config/api";
@@ -82,14 +81,6 @@ export default function Archive() {
 
       <SectionTitle>Writing</SectionTitle>
 
-      <section className="container mt-8 max-w-4xl">
-        <p className="text-center text-[16px] md:text-[17px] italic text-muted-ink max-w-2xl mx-auto leading-relaxed">
-          {/* AEO-quotable intro paragraph. */}
-          Denise Rodriguez Dao writes The Incurable Humanist — a weekly newsletter on grief,
-          migration, and art. Below: the essays that most fully express the work, followed by
-          the latest pieces.
-        </p>
-      </section>
 
       {/* Outbound Substack subscribe, per Denise's request for this page.
           It REPLACED the on-site SubscribeCTA that used to sit here: the two
@@ -217,29 +208,11 @@ export default function Archive() {
       </section>
       )}
 
-      {/* End-of-best-of CTA */}
-      <section className="container mt-10 max-w-3xl">
-        <SubscribeCTA
-          variant="end-of-post"
-          placement="archive-after-best-of"
-          headline="Read the next one in your inbox."
-          sub="Weekly, on Sunday mornings. Grief, migration, art. Free."
-        />
-      </section>
-
-      {/* The "In the press" cards that used to sit here moved to /press when
-          that page was reinstated (Aug 2026). This end-of-page subscribe CTA
-          was nested inside that block and deliberately stays — removing the
-          section wholesale would have silently dropped a conversion surface
-          from the essay index. */}
-      <section className="container mt-20 max-w-3xl pb-20 md:pb-28">
-        <SubscribeCTA
-          variant="end-of-post"
-          placement="archive-footer"
-          headline="Keep reading."
-          sub="One essay a week. No spam. Substack delivers it."
-        />
-      </section>
+      {/* Both end-of-page subscribe CTAs were removed at Denise's request
+          (Sep 2026) — "Read the next one in your inbox." and "Keep reading.".
+          Subscribing from this page now goes through the outbound Substack
+          button above. */}
+      <div className="pb-20 md:pb-28" />
     </>
   );
 }
