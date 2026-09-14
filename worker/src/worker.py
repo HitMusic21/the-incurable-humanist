@@ -686,6 +686,53 @@ def _finish(body: bytes, status: int, upstream_headers, clean: str) -> Response:
     return Response(content=body, status_code=status, headers=headers)
 
 
+@app.get("/api/sync-health")
+async def sync_health(request: Request):
+    """How stale is the corpus?
+
+    Exists because the Substack sync went quiet for two weeks in Sep 2026 and
+    nobody noticed: two essays sat in the feed while the site served 73. The
+    sync itself was fine — a manual trigger created both immediately — so the
+    failure was invisible precisely because nothing errored. Silence looked
+    identical to "nothing to do".
+
+    `stale` is advisory, not an error. Denise publishes weekly, so no write for
+    more than ~10 days means either a genuinely quiet stretch or a sync that has
+    stopped running; either is worth a look. Cheap enough to poll from an uptime
+    monitor.
+
+    Declared ABOVE the catch-all deliberately — FastAPI matches in declaration
+    order, and /{path:path} swallows anything registered after it.
+    """
+    rows = await _all(
+        _db(request).prepare(
+            "SELECT COUNT(*) AS total, MAX(published_at) AS newest, "
+            "MAX(updated_at) AS last_write FROM story WHERE status = 'published'"
+        )
+    )
+    row = rows[0] if rows else {}
+    last = str(row.get("last_write") or "")
+    stale, days = True, None
+    if last:
+        from datetime import datetime, timezone
+
+        try:
+            parsed = datetime.fromisoformat(last.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            days = (datetime.now(timezone.utc) - parsed).days
+            stale = days > 10
+        except Exception:  # noqa: BLE001 - a malformed date is itself a problem
+            pass
+    return {
+        "total": row.get("total"),
+        "newest_published": row.get("newest"),
+        "last_write": last or None,
+        "days_since_write": days,
+        "stale": stale,
+    }
+
+
 # Catch-all: hand anything that is not an API route to Workers Static Assets,
 # server-rendering content into the shell for the two routes where an empty
 # root would otherwise hide everything from non-JS crawlers.
