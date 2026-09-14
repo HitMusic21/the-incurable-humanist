@@ -304,7 +304,9 @@ async def _ssr_archive(db) -> str:
         for r in rows
         if r.get("slug")
     )
-    return f"<h1>Archive</h1><ul>{items}</ul>"
+    # "Writing" matches the nav label and the React page's own <h1>. The URL
+    # stays /archive — only the label changed.
+    return f"<h1>Writing</h1><ul>{items}</ul>"
 
 
 # About-page prose, mirrored from frontend/src/pages/About.tsx (hardcoded JSX

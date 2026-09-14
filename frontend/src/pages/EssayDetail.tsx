@@ -77,7 +77,7 @@ export default function EssayDetail() {
             to="/archive"
             className="inline-flex items-center gap-2 px-6 h-12 rounded-pill bg-accent2 text-white shadow-soft hover:brightness-105 transition font-medium"
           >
-            Browse the archive
+            Browse the writing
           </Link>
         </Card>
       </section>
@@ -157,7 +157,7 @@ export default function EssayDetail() {
         <header className="mb-10">
           <div className="text-[11px] uppercase tracking-[0.18em] text-accent mb-4 font-medium">
             <Link to="/archive" className="hover:underline underline-offset-4">
-              Archive
+              Writing
             </Link>
             {publishedLabel && <span className="text-muted-ink"> · {publishedLabel}</span>}
             {story.read_time_minutes && (

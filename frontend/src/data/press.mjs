@@ -13,16 +13,23 @@
 // import TypeScript at all. Adding an outlet here fans out to every consumer;
 // a hand-maintained Python copy would drift on the first addition.
 //
-// TODO(copy): the `title` and `dek` for Observer and Singulart are drafted in
-// the style of the existing entries and need Denise's review — she supplied the
-// URLs, not the descriptions.
+// NOTE on titles/deks: Denise supplied the URLs, not the descriptions.
+//
+//   Observer   — headline and framing verified against the live article. She is
+//                CITED as a source there, not the author: "As New York-based
+//                Venezuelan lawyer Denise Rodríguez Dao reported in her
+//                Substack, The Incurable Humanist…". The dek says "cites" for
+//                that reason; calling it her byline would be wrong.
+//   Singulart  — TODO(copy): the site is behind bot verification, so the
+//                headline below could not be confirmed against the live page.
+//                Denise should check the wording before this is treated as final.
 
 /** @type {ReadonlyArray<import('./press').PressItem>} */
 export const PRESS = [
   {
     outlet: "Observer",
-    title: "Venezuela's Art Scene Endures Under Dictatorship",
-    dek: "On the cultural market, museums, and what it takes to keep an art scene alive under an authoritarian state.",
+    title: "Venezuela's Art Diaspora, Sofía Ímber's Legacy and Caracas Today",
+    dek: "On the collapse of Venezuela's cultural institutions — citing Denise's firsthand reporting in The Incurable Humanist.",
     href: "https://observer.com/2026/01/venezuela-art-scene-cultural-market-museums-dictatorship/",
   },
   {

@@ -321,7 +321,9 @@ function assertStories(stories, label) {
         websiteNode(),
         breadcrumbNode([
           { name: "Home", path: "/" },
-          { name: "Archive", path: "/archive" },
+          // Label follows the nav ("Writing"); the path stays /archive,
+          // which is where the inbound links and the sitemap point.
+          { name: "Writing", path: "/archive" },
           { name: s.title, path: `/essays/${s.slug}` },
         ]),
         articleNode({

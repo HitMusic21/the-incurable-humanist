@@ -133,7 +133,7 @@ describe("breadcrumbNode", () => {
   it("numbers positions from 1 and absolutizes paths", () => {
     const b = breadcrumbNode([
       { name: "Home", path: "/" },
-      { name: "Archive", path: "/archive" },
+      { name: "Writing", path: "/archive" },
     ]);
     const items = b.itemListElement as Array<{ position: number; item: string }>;
     expect(items[0].position).toBe(1);
