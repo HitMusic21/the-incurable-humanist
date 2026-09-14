@@ -16,6 +16,14 @@ import { fileURLToPath } from "node:url";
 // Speaking topics come from the shared source of truth — the runtime SITE
 // object (React consumers) and this build script now use the same list.
 import { SPEAKING_TOPICS } from "../src/data/speakingTopics.mjs";
+import {
+  articleNode,
+  breadcrumbNode,
+  pageTitle,
+  personNode,
+  serviceNode,
+  websiteNode,
+} from "../src/lib/schemaNodes.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(HERE, "..", "dist");
@@ -23,8 +31,8 @@ const INDEX_HTML = resolve(DIST, "index.html");
 
 const SITE_URL = (process.env.SITE_URL || "https://theincurablehumanist.com").replace(/\/$/, "");
 const API_URL = (process.env.API_URL || "http://localhost:8000").replace(/\/$/, "");
-const PERSON_ID = `${SITE_URL}/about#denise`;
-const WEBSITE_ID = `${SITE_URL}#website`;
+// PERSON_ID / WEBSITE_ID are no longer declared here — they live in
+// schemaNodes.mjs alongside the builders that use them, so the two cannot drift.
 
 // Kept in inline mirrors so this script doesn't need to compile TS at build.
 const STATIC_PAGES = [
@@ -58,6 +66,27 @@ const STATIC_PAGES = [
     description:
       "How The Incurable Humanist handles analytics, cookies, and newsletter data — what is collected, why, and how to opt out.",
   },
+  // Transactional landing pages. Both are noindex: /subscribed is the
+  // double-opt-in destination (worker.py's confirm_lead redirects here) and
+  // /links is the bio-link page, already Disallowed in robots.txt. Neither
+  // belongs in search results, but both need a real title instead of
+  // inheriting the generic homepage one from the shell.
+  {
+    path: "/subscribed",
+    crumb: "Subscribed",
+    noindex: true,
+    title: "You're in — The Incurable Humanist",
+    description:
+      "Your subscription to The Incurable Humanist is confirmed. Weekly essays on grief, migration, and art, by Denise Rodriguez Dao.",
+  },
+  {
+    path: "/links",
+    crumb: "Links",
+    noindex: true,
+    title: "Links — The Incurable Humanist",
+    description:
+      "Denise Rodriguez Dao — newsletter, essays, speaking, and social links.",
+  },
 ];
 
 function escapeHtml(str) {
@@ -68,49 +97,13 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-function personNode() {
-  return {
-    "@type": "Person",
-    "@id": PERSON_ID,
-    name: "Denise Rodriguez Dao",
-    url: `${SITE_URL}/about`,
-  };
-}
-function websiteNode() {
-  return {
-    "@type": "WebSite",
-    "@id": WEBSITE_ID,
-    url: SITE_URL,
-    name: "The Incurable Humanist",
-    publisher: { "@id": PERSON_ID },
-  };
-}
-function articleNode({ title, url, description, published, modified, image }) {
-  return {
-    "@type": "Article",
-    headline: title,
-    url,
-    ...(description ? { description } : {}),
-    ...(published ? { datePublished: published } : {}),
-    ...(modified ? { dateModified: modified } : {}),
-    // Absolute, for the same reason as og:image in renderHead().
-    ...(image ? { image: image.startsWith("/") ? `${SITE_URL}${image}` : image } : {}),
-    author: { "@id": PERSON_ID },
-    publisher: { "@id": PERSON_ID },
-    mainEntityOfPage: url,
-    isPartOf: { "@id": WEBSITE_ID },
-  };
-}
-function serviceNode({ title, url, blurb }) {
-  return {
-    "@type": "Service",
-    serviceType: "Speaking Engagement",
-    name: title,
-    description: blurb,
-    provider: { "@id": PERSON_ID },
-    url,
-  };
-}
+// Node builders now come from src/lib/schemaNodes.mjs (see the import at the
+// top of this file). They used to be defined here as local copies, and they
+// drifted: this file's personNode() returned only @type/@id/name/url, and
+// because inject() strips index.html's id="tih-jsonld-page" block and replaces
+// it, every prerendered page shipped a Person with no sameAs, no jobTitle and
+// no alumniOf. Only the homepage — which this script does not touch — kept the
+// rich node. Do not reintroduce local copies.
 
 async function fetchStories() {
   try {
@@ -213,7 +206,17 @@ async function main() {
       title: p.title,
       description: p.description,
       canonical,
-      jsonLd: [personNode(), websiteNode()],
+      // `noindex` is forwarded for transactional pages (/subscribed, /links).
+      // Before this, the flag existed on renderHead but was never passed.
+      noindex: p.noindex,
+      jsonLd: [
+        personNode(),
+        websiteNode(),
+        breadcrumbNode([
+          { name: "Home", path: "/" },
+          { name: p.crumb || p.title.split(" — ")[0], path: p.path },
+        ]),
+      ],
     });
     writePage(p.path, inject(shell, head));
     written++;
@@ -226,7 +229,16 @@ async function main() {
       title: `${t.title} — Speaking with Denise Rodriguez Dao`,
       description: t.blurb,
       canonical: url,
-      jsonLd: [personNode(), websiteNode(), serviceNode({ title: t.title, url, blurb: t.blurb })],
+      jsonLd: [
+        personNode(),
+        websiteNode(),
+        breadcrumbNode([
+          { name: "Home", path: "/" },
+          { name: "Speak", path: "/speak" },
+          { name: t.title, path: `/speak/${t.slug}` },
+        ]),
+        serviceNode({ title: t.title, url, blurb: t.blurb }),
+      ],
     });
     writePage(`/speak/${t.slug}`, inject(shell, head));
     written++;
@@ -239,13 +251,22 @@ async function main() {
     const canonical = s.canonical_url && s.canonical_url.length > 0 ? s.canonical_url : ownUrl;
     const description = s.meta_description || s.excerpt || `${s.title} — an essay by Denise Rodriguez Dao.`;
     const head = renderHead({
-      title: `${s.title} — The Incurable Humanist`,
+      // Truncated for the <title> only. 28 of 73 essay titles overflowed the
+      // ~60-char search-result budget once the suffix was appended (worst: 159
+      // chars). articleNode below keeps the FULL headline, which schema.org
+      // wants and which has no length limit.
+      title: pageTitle(s.title),
       description,
       canonical,
       ogImage: s.cover_image_url || undefined,
       jsonLd: [
         personNode(),
         websiteNode(),
+        breadcrumbNode([
+          { name: "Home", path: "/" },
+          { name: "Archive", path: "/archive" },
+          { name: s.title, path: `/essays/${s.slug}` },
+        ]),
         articleNode({
           title: s.title,
           url: ownUrl,

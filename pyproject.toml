@@ -31,6 +31,10 @@ ignore = ["E203", "B008"]
 minversion = "8.0"
 testpaths = [
   "backend/tests",
+  # Pure-Python routing tests for the Cloudflare Worker. They deliberately do
+  # not import worker.py (which needs the Pyodide runtime) — see the module
+  # docstring. Unlike backend/tests they need no database, so they always run.
+  "worker/tests",
 ]
 pythonpath = ["backend"]
 addopts = "-q"

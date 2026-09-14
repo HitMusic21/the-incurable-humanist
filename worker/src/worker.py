@@ -295,7 +295,10 @@ async def _ssr_archive(db) -> str:
         )
     )
     items = "".join(
-        f'<li><a href="/essays/{_esc(r["slug"])}/">{_esc(r["title"])}</a>'
+        # No trailing slash: sitemap.xml and the canonical tag both use the
+        # bare form, and both variants resolve 200, so a slash here would make
+        # every crawled archive link a duplicate of the canonical URL.
+        f'<li><a href="/essays/{_esc(r["slug"])}">{_esc(r["title"])}</a>'
         + (f"<p>{_esc(r.get('excerpt') or '')}</p>" if r.get("excerpt") else "")
         + "</li>"
         for r in rows
@@ -304,44 +307,303 @@ async def _ssr_archive(db) -> str:
     return f"<h1>Archive</h1><ul>{items}</ul>"
 
 
+# About-page prose, mirrored from frontend/src/pages/About.tsx (hardcoded JSX
+# that Python cannot import). Deliberately short and factual: this is what a
+# non-JS crawler reads, so it must not contradict the Person node's
+# `description` in schemaNodes.mjs. Update both together.
+_ABOUT_MARKUP = (
+    "<h1>About — Denise Rodriguez Dao</h1>"
+    "<p>Welcome to the curious world of <em>The Incurable Humanist</em>, a space "
+    "to explore grief, migration, and art — and what gets inherited anyway.</p>"
+    "<p>Having lived in Caracas, Mexico City, and now based in New York City, "
+    "Denise Rodriguez Dao writes about memory, migration, and the lives behind "
+    "the statistics. She is a writer and business immigration consultant working "
+    "with artists, collectors, entrepreneurs, and leaders across art and "
+    "entertainment.</p>"
+    '<p><a href="/archive">Read the essay archive</a> · '
+    '<a href="/speak">Speaking topics and booking</a></p>'
+)
+
+# Marketing routes whose server-rendered body needs no D1 query.
+# Before these existed, every one of these routes shipped a 29-byte body:
+# Googlebot renders JS so it eventually saw them, but GPTBot, ClaudeBot and
+# PerplexityBot do not, so /about and the speaking pages were literally blank
+# to every AI answer engine.
+_STATIC_SSR = {
+    "": (
+        "<h1>The Incurable Humanist</h1>"
+        "<p>By Denise Rodriguez Dao. Weekly essays on grief, migration, and art "
+        "— and what gets inherited anyway.</p>"
+        '<p><a href="/archive">Archive</a> · <a href="/about">About</a> · '
+        '<a href="/speak">Speak</a> · <a href="/listen">Listen</a></p>'
+    ),
+    "about": _ABOUT_MARKUP,
+    "listen": (
+        "<h1>Listen</h1>"
+        "<p>Audio essays and playlists from The Incurable Humanist.</p>"
+        '<p><a href="/archive">Read the essays instead</a></p>'
+    ),
+    "privacy": (
+        "<h1>Privacy</h1>"
+        "<p>How The Incurable Humanist handles analytics, cookies, and newsletter "
+        "data — what is collected, why, and how to opt out.</p>"
+    ),
+}
+
+
+async def _topics(request_env) -> list[dict]:
+    """Speaking topics, read from the build-time JSON in public/.
+
+    Emitted by scripts/generate-sitemap.mjs from src/data/speakingTopics.mjs,
+    which that file's header names as the single source of truth. Reading it
+    through the ASSETS binding avoids keeping a fourth, Python, copy of the
+    topic list that would silently drift when a topic is added.
+    """
+    import json
+
+    resp = await request_env.ASSETS.fetch("https://assets.local/speaking-topics.json")
+    if resp.status != 200:
+        return []
+    return json.loads((await resp.bytes()).decode("utf-8"))
+
+
+async def _ssr_topic(request_env, slug: str) -> str | None:
+    """Server-rendered /speak/<slug> body."""
+    topic = next((t for t in await _topics(request_env) if t.get("slug") == slug), None)
+    if not topic:
+        return None
+    return (
+        f"<h1>{_esc(topic['title'])}</h1>"
+        + (f"<p>{_esc(topic.get('subtitle') or '')}</p>" if topic.get("subtitle") else "")
+        + (f"<p>{_esc(topic.get('blurb') or '')}</p>" if topic.get("blurb") else "")
+        + (
+            f"<p>Best fit for: {_esc(topic['audience'])}</p>"
+            if topic.get("audience")
+            else ""
+        )
+        + '<p><a href="/speak">All speaking topics</a> · '
+        '<a href="/about">About Denise Rodriguez Dao</a></p>'
+    )
+
+
+async def _ssr_speak(request_env) -> str | None:
+    """Server-rendered /speak index, linking to every topic landing page."""
+    topics = await _topics(request_env)
+    if not topics:
+        return None
+    items = "".join(
+        f'<li><a href="/speak/{_esc(t["slug"])}">{_esc(t["title"])}</a>'
+        + (f"<p>{_esc(t.get('subtitle') or '')}</p>" if t.get("subtitle") else "")
+        + "</li>"
+        for t in topics
+        if t.get("slug")
+    )
+    return (
+        "<h1>Speaking</h1>"
+        "<p>Denise Rodriguez Dao speaks on grief, migration, art, and the Latin "
+        "American diaspora.</p>"
+        f"<ul>{items}</ul>"
+    )
+
+
+async def _render_markup(request_env, clean: str) -> str | None:
+    """Server-rendered body for `clean`, or None when the route has no SSR.
+
+    Table-driven rather than a chain of is_* booleans: the SSR list, the
+    prerender page list and the router had already drifted apart once, and a
+    single dispatch point makes the next addition obvious.
+    """
+    if clean.startswith("essays/") and clean.count("/") == 1:
+        return await _ssr_essay(request_env.DB, clean.split("/", 1)[1])
+    if clean == "archive":
+        return await _ssr_archive(request_env.DB)
+    if clean == "speak":
+        return await _ssr_speak(request_env)
+    if clean.startswith("speak/") and clean.count("/") == 1:
+        return await _ssr_topic(request_env, clean.split("/", 1)[1])
+    return _STATIC_SSR.get(clean)
+
+
+# ---------------------------------------------------------------------------
+# Routing tables for the catch-all.
+# ---------------------------------------------------------------------------
+
+# Retired routes. These exist in main.tsx only as client-side <Navigate replace>,
+# which can never run: before this table existed the Worker 404'd with a 0-byte
+# body, so React Router never booted. A server-issued 301 also passes link
+# equity, which a 200 shell + a client-side hop does not — crawlers score the
+# 200 page, not the JS redirect.
+_REDIRECTS = {
+    "newsletter": "/",
+    "press": "/archive",
+    "contact": "/speak",
+    "essays": "/archive",
+}
+
+# Static-file extensions. A 404 on one of these is a REAL 404 and must stay one.
+# Serving index.html as text/html for a missing .js white-screens the site while
+# reporting 200 to every uptime monitor — the worst possible failure mode.
+_ASSET_EXTS = (
+    ".js", ".mjs", ".css", ".map", ".json", ".xml", ".txt", ".webmanifest",
+    ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".avif", ".ico",
+    ".woff", ".woff2", ".ttf", ".otf", ".eot",
+    ".pdf", ".mp3", ".mp4", ".webm", ".zip",
+)
+
+# Admin is intentionally excluded from the SPA fallback. The auth API
+# (/auth/login, /stories/id/{id}, admin CRUD) was left behind in backend/app
+# during the Workers migration — POST /api/auth/login returns 405, not 404,
+# because only this GET catch-all matches it. Serving the shell here would
+# render a login form that cannot log in, which is worse than an honest 404.
+# Essays arrive via the hourly Substack sync, so admin CRUD is currently
+# redundant. Remove this once the auth endpoints exist on the Worker.
+_NO_FALLBACK_PREFIXES = ("admin",)
+
+# Applied to every asset/HTML response. Set here rather than via
+# BaseHTTPMiddleware: that middleware wraps each response in an anyio task
+# group — real per-request cost on Pyodide for what is a dict update — and it
+# would also wrap /api/*, where different headers are wanted. Everything we
+# need to harden already funnels through _finish().
+#
+# Strict-Transport-Security is deliberately ABSENT: it is set at the Cloudflare
+# zone (SSL/TLS -> Edge Certificates -> HSTS) so it also covers responses this
+# Worker never produces. Setting it in both places invites drift.
+# Content-Security-Policy is staged separately (Report-Only first) because it
+# can white-screen the site.
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+}
+
+# Content-hashed filenames: Vite hashes /assets, rehost_essay_images.py sha1s
+# /essay-images. The URL changes when the bytes change, so the response can
+# never go stale and `immutable` lets the browser skip revalidation entirely.
+_IMMUTABLE_PREFIXES = ("assets/", "essay-images/")
+
+# HTML must revalidate: index.html is the SPA shell and the prerendered
+# per-route shells carry meta that changes on every build. If HTML ever got
+# `immutable`, a deploy would be invisible to returning visitors for a year.
+_HTML_CACHE = "public, max-age=0, must-revalidate"
+
+
+def _looks_like_asset(clean: str) -> bool:
+    """True when the path names a file rather than a client route.
+
+    Checked against the LAST segment only. Slugs can never contain a dot —
+    slugify() strips everything outside [a-z0-9\\s-] — so an essay URL is never
+    mistaken for a file.
+    """
+    return clean.rsplit("/", 1)[-1].lower().endswith(_ASSET_EXTS)
+
+
+def _redirect_target(clean: str) -> str | None:
+    """Permanent destination for a retired path, or None to keep routing."""
+    if clean in _REDIRECTS:
+        return _REDIRECTS[clean]
+    # /archive/<slug> is the legacy essay alias kept for old inbound links.
+    # Canonical is /essays/<slug>, with no trailing slash to match sitemap.xml.
+    if clean.startswith("archive/") and clean.count("/") == 1:
+        slug = clean.split("/", 1)[1]
+        if slug:
+            return f"/essays/{slug}"
+    return None
+
+
+def _finish(body: bytes, status: int, upstream_headers, clean: str) -> Response:
+    """Build the outgoing Response with corrected caching + security headers.
+
+    `upstream_headers` comes from ASSETS.fetch(). The Workers SDK exposes it as
+    an http.client.HTTPMessage-backed mapping, so dict() is enough — but copy it
+    rather than mutating in place, since Starlette re-encodes every value.
+    """
+    # Lower-case every key on the way in. The upstream mapping is
+    # case-insensitive but preserves the wire casing ("Cache-Control"), so
+    # writing a differently-cased key alongside it emits the header TWICE —
+    # observed as "public, max-age=0, must-revalidate, public, max-age=0,
+    # must-revalidate". Normalising first makes assignment a real overwrite.
+    try:
+        headers = {str(k).lower(): str(v) for k, v in dict(upstream_headers).items()}
+    except Exception:  # noqa: BLE001 - header shape is runtime-dependent
+        headers = {}
+
+    # Starlette recomputes content-length from the (SSR-grown) body. Carrying
+    # the upstream value truncates the response.
+    headers.pop("content-length", None)
+
+    if clean.startswith(_IMMUTABLE_PREFIXES):
+        headers["cache-control"] = "public, max-age=31536000, immutable"
+    elif headers.get("content-type", "").startswith("text/html") or not clean:
+        headers["cache-control"] = _HTML_CACHE
+
+    for key, value in _SECURITY_HEADERS.items():
+        headers[key.lower()] = value
+    return Response(content=body, status_code=status, headers=headers)
+
+
 # Catch-all: hand anything that is not an API route to Workers Static Assets,
 # server-rendering content into the shell for the two routes where an empty
 # root would otherwise hide everything from non-JS crawlers.
 # `run_worker_first` is true in wrangler.jsonc so the Worker sees every request
 # and the /api routes above win.
-@app.get("/{path:path}")
+#
+# HEAD is served alongside GET because a GET-only decorator made every HEAD
+# request 405 sitewide, which breaks link checkers and uptime monitors.
+@app.api_route("/{path:path}", methods=["GET", "HEAD"])
 async def static_assets(path: str, request: Request):
     # NB: don't shadow the module-level `env` import — _db() falls back to it.
     request_env = request.scope.get("env") or env
+    clean = path.strip("/")
+
+    # 1. Retired routes, before touching ASSETS: /essays (retired) and
+    #    /essays/<slug> (real) share a prefix, as do /archive and
+    #    /archive/<slug>. Deciding here turns a pattern race into a lookup.
+    target = _redirect_target(clean)
+    if target is not None:
+        return RedirectResponse(url=target, status_code=301)
+
     resp = await request_env.ASSETS.fetch(f"https://assets.local/{path}")
     body = await resp.bytes()
 
-    clean = path.strip("/")
-    is_essay = clean.startswith("essays/") and clean.count("/") == 1
-    is_archive = clean == "archive"
-
-    if resp.status == 200 and (is_essay or is_archive):
+    # Only HTML routes can carry SSR. Gating on the path (rather than trying to
+    # decode every response) keeps images and the JS bundle off the decode path.
+    if resp.status == 200 and not _looks_like_asset(clean):
         try:
             html = body.decode("utf-8")
             if _ROOT_DIV in html:
-                db = request_env.DB
-                markup = (
-                    await _ssr_essay(db, clean.split("/", 1)[1])
-                    if is_essay
-                    else await _ssr_archive(db)
-                )
+                markup = await _render_markup(request_env, clean)
                 if markup:
-                    return Response(
-                        content=_inject(html, markup).encode("utf-8"),
-                        status_code=200,
-                        headers=resp.headers,
+                    return _finish(
+                        _inject(html, markup).encode("utf-8"), 200, resp.headers, clean
                     )
+        except UnicodeDecodeError:
+            pass  # binary asset; nothing to inject
         except Exception as exc:  # noqa: BLE001
             # SSR is an enhancement: a D1 hiccup must serve the SPA shell, not
             # a 500. The page still works for JS clients.
             print(f"SSR failed for /{clean}: {type(exc).__name__}: {exc}")
 
-    return Response(content=body, status_code=resp.status, headers=resp.headers)
+    # 2. SPA fallback — nginx's `try_files $uri $uri/ /index.html`, reinstated.
+    #    Required in code because run_worker_first:true means wrangler's
+    #    not_found_handling never fires: this Worker owns the request and calls
+    #    ASSETS.fetch() itself.
+    #
+    #    Returns 200, not 404: /subscribed (where every confirmed double-opt-in
+    #    lands) and /links are real routes, indistinguishable from a typo at
+    #    this layer. NotFound.tsx carries noindex so genuine typos are not
+    #    indexed as soft-404s.
+    if (
+        resp.status == 404
+        and not _looks_like_asset(clean)
+        and not clean.startswith(_NO_FALLBACK_PREFIXES)
+    ):
+        shell = await request_env.ASSETS.fetch("https://assets.local/index.html")
+        if shell.status == 200:
+            return _finish(await shell.bytes(), 200, shell.headers, clean)
+
+    return _finish(body, resp.status, resp.headers, clean)
 
 
 _asgi_entrypoint = asgi.entrypoint(app)

@@ -1,98 +1,29 @@
 // JSON-LD schema builders. Wrap outputs in a single @graph per page.
 // Person schema with sameAs solves the "disconnected entity" HCU problem.
+//
+// The node builders themselves live in ./schemaNodes.mjs so that the bare-Node
+// build scripts (scripts/prerender.mjs, scripts/generate-sitemap.mjs) can
+// import the SAME code. They previously kept private copies, which drifted:
+// prerender's personNode() lost sameAs/jobTitle/alumniOf, and since it
+// overwrites index.html's JSON-LD block, every prerendered page shipped a
+// stripped-down Person. This file stays the import site for React code.
 
-import { SITE } from "@/config/site";
+export {
+  articleNode,
+  breadcrumbNode,
+  pageTitle,
+  personNode,
+  serviceNode,
+  toIsoUtc,
+  websiteNode,
+  PERSON_ID,
+  SITE_URL,
+  WEBSITE_ID,
+} from "./schemaNodes.mjs";
 
-const SITE_URL = SITE.siteUrl;
-const PERSON_ID = `${SITE_URL}/about#denise`;
-const WEBSITE_ID = `${SITE_URL}#website`;
+export type { ArticleNodeInput, ServiceNodeInput } from "./schemaNodes.mjs";
 
-export function personNode() {
-  return {
-    "@type": "Person",
-    "@id": PERSON_ID,
-    name: "Denise Rodriguez Dao",
-    givenName: "Denise",
-    familyName: "Rodriguez Dao",
-    url: `${SITE_URL}/about`,
-    image: `${SITE_URL}/founder.jpg`,
-    jobTitle: "Writer, Business Immigration Consultant",
-    description:
-      "Denise Rodriguez Dao writes The Incurable Humanist, a weekly newsletter on grief, migration, and art. She is a business immigration consultant working with artists, collectors, entrepreneurs, and leaders across art and entertainment.",
-    knowsAbout: ["Grief", "Migration", "Art", "Latin American Art", "Diaspora"],
-    alumniOf: [
-      {
-        "@type": "EducationalOrganization",
-        name: "Christie's Education, New York",
-      },
-      {
-        "@type": "EducationalOrganization",
-        name: "Andrés Bello Catholic University",
-      },
-    ],
-    sameAs: [
-      SITE.socials.instagram,
-      SITE.socials.tiktok,
-      SITE.socials.facebook,
-      SITE.socials.linkedin,
-      SITE.socials.x,
-      SITE.substackUrl,
-    ].filter(Boolean),
-  };
-}
-
-export function websiteNode() {
-  return {
-    "@type": "WebSite",
-    "@id": WEBSITE_ID,
-    url: SITE_URL,
-    name: "The Incurable Humanist",
-    description: SITE.positioning,
-    publisher: { "@id": PERSON_ID },
-    inLanguage: "en-US",
-  };
-}
-
-export function breadcrumbNode(items: Array<{ name: string; path: string }>) {
-  return {
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((item, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: item.name,
-      item: `${SITE_URL}${item.path}`,
-    })),
-  };
-}
-
-export type ArticleNodeInput = {
-  title: string;
-  url: string;
-  description?: string;
-  published?: string;
-  modified?: string;
-  image?: string;
-};
-
-export function articleNode(input: ArticleNodeInput) {
-  return {
-    "@type": "Article",
-    headline: input.title,
-    url: input.url,
-    ...(input.description ? { description: input.description } : {}),
-    ...(input.published ? { datePublished: input.published } : {}),
-    ...(input.modified ? { dateModified: input.modified } : {}),
-    // Self-hosted essay images are root-relative paths; schema.org consumers
-    // read these detached from the page, so they must be absolute.
-    ...(input.image
-      ? { image: input.image.startsWith("/") ? `${SITE_URL}${input.image}` : input.image }
-      : {}),
-    author: { "@id": PERSON_ID },
-    publisher: { "@id": PERSON_ID },
-    mainEntityOfPage: input.url,
-    isPartOf: { "@id": WEBSITE_ID },
-  };
-}
+import { breadcrumbNode, personNode, websiteNode } from "./schemaNodes.mjs";
 
 /**
  * Convenience: build a full @graph for a standard page (Person + WebSite + Breadcrumb).

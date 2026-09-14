@@ -14,6 +14,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SPEAKING_TOPICS } from "../src/data/speakingTopics.mjs";
+import { toIsoUtc } from "../src/lib/schemaNodes.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(HERE, "..", "dist");
@@ -85,7 +86,13 @@ function buildSitemap(stories) {
   if (stories) {
     for (const s of stories) {
       const loc = `${SITE_URL}/essays/${s.slug}`;
-      const lastmod = s.updated_at || s.published_at || now;
+      // Normalize to UTC with a Z designator. The backend serves naive
+      // microsecond timestamps ("2026-08-30T23:52:58.294656"), which are not
+      // valid W3C Datetime — 73 of 83 <lastmod> values shipped without a
+      // timezone and Google may ignore the field entirely. The static routes
+      // above already use `now`, a proper ISO string, which is why only the
+      // essay entries were affected.
+      const lastmod = toIsoUtc(s.updated_at || s.published_at) || now;
       urls.push(
         `  <url>\n` +
           `    <loc>${xmlEscape(loc)}</loc>\n` +
@@ -160,6 +167,29 @@ async function main() {
   } else {
     console.log("[sitemap] Skipping rss.xml (no essays available).");
   }
+
+  // Topic copy for the Worker's /speak and /speak/<slug> server-rendering.
+  //
+  // The Worker is Python and cannot import this .mjs, so without this file the
+  // only option would be a hand-maintained Python copy of the topic list — a
+  // FOURTH copy, breaking the "adding a topic fans out to all consumers"
+  // guarantee in speakingTopics.mjs's header. Emitting JSON keeps that module
+  // the single source of truth; the Worker reads it through the ASSETS binding
+  // it already uses for HTML, so there is no new binding and no new dependency.
+  writeFileSync(
+    resolve(DIST, "speaking-topics.json"),
+    JSON.stringify(
+      SPEAKING_TOPICS.map((t) => ({
+        slug: t.slug,
+        title: t.title,
+        subtitle: t.subtitle,
+        audience: t.audience,
+        blurb: t.blurb,
+      }))
+    ),
+    "utf8"
+  );
+  console.log(`[sitemap] Wrote speaking-topics.json (${SPEAKING_TOPICS.length} topics).`);
 }
 
 main().catch((e) => {

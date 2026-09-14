@@ -13,6 +13,20 @@
       "database_id": "e6567044-64d3-4bbe-a10f-43506a869118"
     }
   ],
+  // `not_found_handling` MUST stay unset (i.e. "none").
+  //
+  // It is tempting to set "single-page-application" here, but it breaks the
+  // Worker's own fallback: ASSETS.fetch() would then answer 200 + index.html
+  // for EVERY unmatched path, so the `resp.status == 404` branch in worker.py
+  // never runs and its guards become dead code. Verified in `pywrangler dev` —
+  // with it set, /assets/nope.js returned 200 text/html instead of 404, which
+  // white-screens the site while reporting 200 to uptime monitors, and /admin
+  // bypassed its exclusion. The SPA fallback lives in worker.py's catch-all,
+  // which needs to see the real 404 to make that decision.
+  //
+  // `html_handling` is likewise left at its "auto-trailing-slash" default:
+  // that is what resolves /about to about/index.html for all 83 prerendered
+  // directory routes.
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
