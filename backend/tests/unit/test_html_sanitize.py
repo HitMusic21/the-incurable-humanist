@@ -158,6 +158,39 @@ class TestSrcsetIsRemoved:
         assert again.count('fetchpriority="high"') == 1
 
 
+class TestHeadingHierarchy:
+    """A body <h1> competes with the page title for the document outline.
+
+    The essay template renders the title as the one <h1>. Substack authors hit
+    this with listicles — the reading-list essay gave each of its 4 books an
+    <h1>, so the rendered page carried 5. Measured across the corpus: 1 essay
+    of 73 affected, 4 tags.
+    """
+
+    def test_body_h1_is_demoted_to_h2(self):
+        out = sanitize_substack_html("<h1>1. A Book</h1><p>Prose.</p>")
+        assert "<h1" not in out
+        assert "<h2>1. A Book</h2>" in out
+
+    def test_existing_h2_and_h3_are_untouched(self):
+        out = sanitize_substack_html("<h2>Kept</h2><h3>Also kept</h3>")
+        assert "<h2>Kept</h2>" in out
+        assert "<h3>Also kept</h3>" in out
+
+    def test_heading_text_survives(self):
+        out = sanitize_substack_html("<h1>Renoir &amp; Betrayal</h1>")
+        assert "Renoir" in out and "Betrayal" in out
+
+    def test_is_idempotent(self):
+        once = sanitize_substack_html("<h1>A</h1><p>b</p>")
+        assert sanitize_substack_html(once) == once
+
+    def test_does_not_move_content_hash(self):
+        """Markup-only, so substack_sync must not see the row as edited."""
+        src = "<h1>1. A Book</h1><p>Prose.</p>"
+        assert content_hash(sanitize_substack_html(src)) == content_hash(src)
+
+
 class TestFigureLinkNames:
     """axe `link-name` (serious) x2 on every one of the 71 essays.
 

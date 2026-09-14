@@ -69,6 +69,13 @@ _FIGURE_RE = re.compile(r"<figure\b[^>]*>.*?</figure>", re.IGNORECASE | re.DOTAL
 _FIGCAPTION_RE = re.compile(r"<figcaption\b[^>]*>(.*?)</figcaption>", re.IGNORECASE | re.DOTALL)
 _LINK_OPEN_RE = re.compile(r"<a\b(?![^>]*\baria-label=)", re.IGNORECASE)
 _ALT_RE = re.compile(r'\salt=(["\']).*?\1', re.IGNORECASE | re.DOTALL)
+# Body <h1> -> <h2>. The page template already renders the essay title as the
+# document's one <h1>, so any <h1> inside the body is a second top-level
+# heading competing with it. Substack authors hit this with listicles: the
+# reading-list essay gave each of its 4 books an <h1>, producing 5 on the
+# rendered page. Demoting preserves the visual hierarchy the author intended
+# while restoring a single-h1 document outline.
+_BODY_H1_RE = re.compile(r"<(/?)h1\b", re.IGNORECASE)
 
 # Substack's own style attribute is the only one in the corpus (232 instances,
 # all `text-align: justify`). It is stripped by the allowlist; the
@@ -105,6 +112,15 @@ def _name_figure_link(match: re.Match[str]) -> str:
     return _LINK_OPEN_RE.sub(f'<a aria-label="{html_module.escape(label, quote=True)}"', figure, 1)
 
 
+def _demote_body_headings(html: str) -> str:
+    """Rewrite body <h1> as <h2> (see _BODY_H1_RE).
+
+    Markup-only: plain_text() strips tags before hashing, so this cannot move
+    content_hash and will not make substack_sync see the row as edited.
+    """
+    return _BODY_H1_RE.sub(lambda m: f"<{m.group(1)}h2", html)
+
+
 def _promote_first_image(html: str) -> str:
     """Make the first image eager and high-priority; keep the rest lazy.
 
@@ -139,6 +155,7 @@ def sanitize_substack_html(raw: str) -> str:
     # nh3 filters attributes, it never adds them — so loading="lazy" and the
     # figure accessible names are post-passes. Both guarded against double-apply.
     cleaned = _IMG_OPEN_RE.sub('<img loading="lazy"', cleaned)
+    cleaned = _demote_body_headings(cleaned)
     cleaned = _promote_first_image(cleaned)
     return _FIGURE_RE.sub(_name_figure_link, cleaned)
 
