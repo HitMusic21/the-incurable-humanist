@@ -657,16 +657,37 @@ _SECURITY_HEADERS = {
 # and needed in script-src for now, because analytics.ts builds the Meta and
 # TikTok pixel bootstraps as inline scripts. Tightening script-src is a
 # follow-up, after the policy is enforcing and stable.
+#
+# The five origins below were added 2026-09-19 after actually MEASURING the
+# policy: a consented Playwright pass over /, /about, /archive, /speak,
+# /listen, /press and an essay page produced six distinct violations. Promoting
+# this to enforcing beforehand — which the plan called for — would have blocked
+# Cloudflare's analytics beacon, PostHog's config and exception-capture
+# scripts, the GA4 tracking pixel and two essays' images. A Report-Only policy
+# is only as good as the pass that exercises it WITH consent granted; an
+# un-consented load never fires GA4/Meta/TikTok at all.
 _CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com "
     "https://connect.facebook.net https://analytics.tiktok.com "
-    "https://us.i.posthog.com; "
+    # us-assets is a SEPARATE host from us.i.posthog.com and serves config.js
+    # plus exception-autocapture.js. Allowing only the ingest host blocks them.
+    "https://us.i.posthog.com https://us-assets.i.posthog.com "
+    # Cloudflare's own Web Analytics beacon, injected by the platform rather
+    # than by our code — so it is easy to forget it needs listing.
+    "https://static.cloudflareinsights.com; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com data:; "
+    # googletagmanager appears here as well as in script-src: GA4 sends its
+    # collection hit as an IMAGE request (…/a?id=G-…), not a script.
+    # substackcdn covers the essays whose images still point at Substack's CDN
+    # — scripts/rehost_essay_images.py is a one-off, so every newly synced
+    # essay arrives with Substack-hosted images until it is run again.
     "img-src 'self' data: https://www.google-analytics.com "
-    "https://www.facebook.com https://analytics.tiktok.com; "
-    "connect-src 'self' https://us.i.posthog.com "
+    "https://www.googletagmanager.com https://substackcdn.com "
+    "https://www.facebook.com https://connect.facebook.net "
+    "https://analytics.tiktok.com; "
+    "connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com "
     "https://www.google-analytics.com https://analytics.tiktok.com "
     "https://connect.facebook.net; "
     "frame-src https://open.spotify.com https://www.youtube-nocookie.com "

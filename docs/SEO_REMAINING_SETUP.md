@@ -111,6 +111,20 @@ button (directly below the "Always Use HTTPS" toggle you already turned on).
 Cloudflare shows a warning dialog; its prerequisites are all satisfied — HTTPS
 works, DNS is proxied, and nothing redirects HTTPS→HTTP.
 
+**Re-verified 2026-09-19** (all three prerequisites still hold, still not set):
+
+```
+http://theincurablehumanist.com      -> 301 (redirects to HTTPS)
+https://www.theincurablehumanist.com -> 200
+subdomains (blog/mail/shop/app/staging) -> none resolve
+Strict-Transport-Security header     -> absent
+```
+
+No subdomains exist, so "Apply to subdomains" is safe either way today — the
+recommendation to leave it OFF is about future ones, not present risk. This
+cannot be done from the CLI: the Wrangler OAuth token is scoped to Workers and
+gets `9109 Unauthorized` on zone settings, so it needs the dashboard.
+
 **Honest framing:** Always Use HTTPS (already live) redirects everyone to HTTPS.
 HSTS closes a narrower gap — a downgrade attack on a repeat visitor's first
 request. For a publication with no logins or payments, it's real but modest.
@@ -195,6 +209,24 @@ largest factor in whether theincurablehumanist.com ranks for Denise's own work.
   for Denise's review (see the review file referenced in the session notes);
   nothing is applied without her approval, since it means putting words in her
   byline.
+- **Newly synced essays keep Substack-hosted images** — found 2026-09-19.
+  `backend/scripts/rehost_essay_images.py` is a **one-off**, not part of the
+  hourly sync, so every essay that arrives after the last run keeps
+  `substackcdn.com` image URLs. Currently 2 of 75 essays (both synced Sep 14:
+  *The Ultimate New York Art Guide* and *Good Grief*), and the count grows by
+  one per new essay.
+
+  This re-creates exactly the dependency the rehosting migration removed: if
+  Substack changes CDN rules or the account lapses, those essays lose their
+  images — including the `og:image` used for social previews. It also surfaced
+  as a CSP violation, which is why `substackcdn.com` is now in `img-src`.
+
+  Two options: run the script periodically after syncs, or fold the rewrite
+  into `substack_sync.py` so it happens on ingest. The second is the durable
+  fix but needs care — the script deliberately does **not** recompute
+  `content_hash` (it hashes text, not markup), and that invariant must hold or
+  every sync would rewrite every row.
+
 - **WebP/AVIF images** — blocked on the Cloudflare Free plan (Polish is Pro+).
   Alternative is converting the 185 files in `/essay-images/` at build time,
   typically 25-50% smaller. A real task, not a toggle.

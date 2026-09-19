@@ -279,6 +279,12 @@ def test_csp_ships_report_only_first():
             "https://www.youtube-nocookie.com",
             "Voices for Venezuela reel on /speak — blank frame without it",
         ),
+        # All four measured as real violations on 2026-09-19, with consent
+        # granted. See the comment above _CSP in worker.py.
+        ("https://us-assets.i.posthog.com", "PostHog config.js + exception-autocapture.js"),
+        ("https://static.cloudflareinsights.com", "Cloudflare's own analytics beacon"),
+        ("https://www.googletagmanager.com", "GA4 sends its collection hit as an IMAGE"),
+        ("https://substackcdn.com", "two synced essays still carry Substack-hosted images"),
     ],
 )
 def test_csp_allows_every_origin_the_site_actually_loads(origin, why):
