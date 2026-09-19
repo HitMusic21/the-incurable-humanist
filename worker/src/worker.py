@@ -179,11 +179,17 @@ async def _record_sync_run(db, result: dict) -> None:
             int(result.get("created") or 0),
             int(result.get("updated") or 0),
             int(result.get("skipped") or 0),
-            "; ".join(str(e) for e in errors)[:1000] if errors else None,
+            # Empty string, not None: binding a Python None through the D1 FFI
+            # threw and the whole insert was swallowed by the except below, so
+            # the first fallback run wrote an essay but logged nothing. The
+            # column stays nullable; readers treat "" as no errors.
+            "; ".join(str(e) for e in errors)[:1000] if errors else "",
             0 if errors else 1,
         ).run()
     except Exception as exc:  # noqa: BLE001 - never let bookkeeping break the sync
-        print(f"sync_run log failed: {type(exc).__name__}: {exc}")
+        # Printed with the repr so a future FFI/binding failure names itself
+        # instead of vanishing the way the first one did.
+        print(f"sync_run log failed: {type(exc).__name__}: {exc!r}")
 
 
 async def _run_sync(db, request_env=None) -> dict:
