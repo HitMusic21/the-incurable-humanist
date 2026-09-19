@@ -150,6 +150,28 @@ async def fetch_api_body(client: httpx.AsyncClient, slug: str) -> str | None:
     return response.json().get("body_html") or None
 
 
+_EXISTING_COLS = "id, slug, source_url, content_hash, status, title, cover_image_url"
+
+
+async def load_existing(db) -> dict[str, dict]:
+    """Every story keyed by source_url, in ONE query.
+
+    upsert_entry used to issue its own `SELECT ... WHERE source_url = ?` per
+    entry, so an hourly run made 20 sequential D1 round-trips before doing any
+    work. Combined with parsing a 417KB feed and sanitizing 20 bodies, that
+    pushed the scheduled invocation past the 2,000ms CPU limit and it was
+    killed with `exceededCpu` every hour — see the sync_run notes in worker.py.
+
+    The corpus is ~76 rows and only the small columns are selected, so one
+    query is cheap and replaces all 20.
+    """
+    return {
+        row["source_url"]: row
+        for row in await _query(db, f"SELECT {_EXISTING_COLS} FROM story")
+        if row.get("source_url")
+    }
+
+
 async def upsert_entry(
     db,
     author_id: int,
@@ -161,18 +183,30 @@ async def upsert_entry(
     cover_image_url: str | None,
     source: str,
     client: httpx.AsyncClient | None = None,
+    existing: dict | None = None,
+    existing_loaded: bool = False,
 ) -> str:
-    """Insert or update one story. Returns 'created' | 'updated' | 'skipped'."""
+    """Insert or update one story. Returns 'created' | 'updated' | 'skipped'.
+
+    `existing` is the pre-fetched row for this source_url (see load_existing).
+    Pass `existing_loaded=True` to promise the caller already looked it up, so
+    `existing=None` means "genuinely absent" rather than "not checked" — the
+    distinction matters, because otherwise a caller with a cache miss would
+    silently fall back to a per-entry query and undo the batching.
+    """
     clean = sanitize_substack_html(body_html)
     if not clean:
         return "skipped"
     digest = content_hash(clean)
 
-    rows = await _query(
-        db,
-        "SELECT id, content_hash, status, title, cover_image_url FROM story WHERE source_url = ?",
-        source_url,
-    )
+    if existing_loaded:
+        rows = [existing] if existing else []
+    else:
+        rows = await _query(
+            db,
+            f"SELECT {_EXISTING_COLS} FROM story WHERE source_url = ?",
+            source_url,
+        )
 
     if not rows:
         slug = await ensure_unique_slug(db, slugify(title or "essay"))
@@ -333,6 +367,11 @@ async def sync_from_feed(
         response.raise_for_status()
         parsed = feedparser.parse(response.text)
 
+        # One query for the whole corpus instead of one per entry. See
+        # load_existing() — the per-entry lookups were a material part of what
+        # pushed this past the scheduled-invocation CPU limit.
+        existing_by_url = await load_existing(db)
+
         for entry in parsed.entries:
             link = entry.get("link")
             if not link:
@@ -352,6 +391,8 @@ async def sync_from_feed(
                     cover_image_url=_entry_image(entry),
                     source="rss",
                     client=client,
+                    existing=existing_by_url.get(link),
+                    existing_loaded=True,
                 )
                 if outcome == "created":
                     created += 1
@@ -360,11 +401,18 @@ async def sync_from_feed(
                 else:
                     skipped += 1
                 if outcome in ("created", "updated"):
-                    row = await _query(
-                        db, "SELECT slug FROM story WHERE source_url = ?", link
-                    )
-                    if row and row[0].get("slug"):
-                        changed.append(row[0]["slug"])
+                    # Prefer the prefetched slug. Only a freshly INSERTed row
+                    # is absent from that map, so the fallback query runs at
+                    # most once per genuinely new essay rather than per entry.
+                    cached = existing_by_url.get(link)
+                    slug_value = cached.get("slug") if cached else None
+                    if not slug_value:
+                        row = await _query(
+                            db, "SELECT slug FROM story WHERE source_url = ?", link
+                        )
+                        slug_value = row[0].get("slug") if row else None
+                    if slug_value:
+                        changed.append(slug_value)
             except Exception as exc:  # noqa: BLE001 - one bad post must not abort the batch
                 errors.append(f"{link}: {exc}")
 
