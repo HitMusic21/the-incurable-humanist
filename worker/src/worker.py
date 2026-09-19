@@ -155,10 +155,43 @@ async def _resolve_author_id(db, request_env=None) -> int:
     return rows[0]["id"]
 
 
+async def _record_sync_run(db, result: dict) -> None:
+    """Persist the outcome of one sync run.
+
+    Without this, a sync that RUNS but cannot fetch is indistinguishable from a
+    quiet week: /api/sync-health only measures how long ago a row was written,
+    and Denise legitimately publishes only weekly. That is exactly the blind
+    spot that hid the Sep 2026 outage — and it hid a second one, because when
+    Substack began 429ing Cloudflare's egress IPs the endpoint still reported
+    stale=false while nothing was being ingested at all.
+
+    Best-effort: a logging failure must never fail the sync itself.
+    """
+    from datetime import datetime, timezone
+
+    errors = result.get("errors") or []
+    try:
+        await db.prepare(
+            "INSERT INTO sync_run (ran_at, created, updated, skipped, errors, ok) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
+        ).bind(
+            datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+            int(result.get("created") or 0),
+            int(result.get("updated") or 0),
+            int(result.get("skipped") or 0),
+            "; ".join(str(e) for e in errors)[:1000] if errors else None,
+            0 if errors else 1,
+        ).run()
+    except Exception as exc:  # noqa: BLE001 - never let bookkeeping break the sync
+        print(f"sync_run log failed: {type(exc).__name__}: {exc}")
+
+
 async def _run_sync(db, request_env=None) -> dict:
     author_id = await _resolve_author_id(db, request_env)
     # settings carries the env binding so the sync can read INDEXNOW_KEY.
-    return await sync_from_feed(db, author_id, settings=request_env or env)
+    result = await sync_from_feed(db, author_id, settings=request_env or env)
+    await _record_sync_run(db, result)
+    return result
 
 
 @app.post("/api/stories/sync")
@@ -809,12 +842,41 @@ async def sync_health(request: Request):
             stale = days > 10
         except Exception:  # noqa: BLE001 - a malformed date is itself a problem
             pass
+    # The last actual RUN, which is a different question from the last write.
+    # A sync that executes hourly and fetches nothing (Substack 429ing
+    # Cloudflare's egress IPs, Sep 2026) leaves last_write untouched and looks
+    # identical to a quiet publishing week. Surface both.
+    last_run: dict = {}
+    try:
+        runs = await _all(
+            _db(request).prepare(
+                "SELECT ran_at, created, updated, skipped, errors, ok "
+                "FROM sync_run ORDER BY id DESC LIMIT 1"
+            )
+        )
+        if runs:
+            r = runs[0]
+            last_run = {
+                "ran_at": r.get("ran_at"),
+                "created": r.get("created"),
+                "updated": r.get("updated"),
+                "skipped": r.get("skipped"),
+                "ok": bool(r.get("ok")),
+                "errors": r.get("errors"),
+            }
+    except Exception:  # noqa: BLE001 - table may not exist yet on a fresh DB
+        pass
+
     return {
         "total": row.get("total"),
         "newest_published": row.get("newest"),
         "last_write": last or None,
         "days_since_write": days,
         "stale": stale,
+        # `stale` asks "is the content old?"; `last_run.ok` asks "is the
+        # pipeline working?". Monitor the second — it turns red in an hour
+        # rather than in ten days.
+        "last_run": last_run or None,
     }
 
 
