@@ -357,3 +357,48 @@ def test_observability_is_enabled():
         "observability.enabled must be true — without it print() from the cron "
         "handler goes nowhere and sync failures are silent"
     )
+
+
+# --- trailing-slash canonicalization -----------------------------------------
+
+
+def test_trailing_slash_redirects_to_the_bare_url():
+    """/essays/x/ and /essays/x must not both be live URLs.
+
+    `clean = path.strip("/")` made them render identically, so both returned
+    200 and Google treated them as two URLs. The canonical tag pointed at the
+    bare form, so this never caused duplicate INDEXING — it wasted crawl
+    budget, which GSC confirmed was real rather than theoretical: the slash
+    variants were crawled and earned their own impressions
+    (trader-joes-panic…/ 4, will-this-matter…/ 6), and several essays listed a
+    /slug/ self-referrer as their only referring URL.
+
+    That matters because crawl budget is the binding constraint here: 10 of 76
+    essays are unindexed with Google declining to crawl them.
+    """
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    assert 'if path.endswith("/") and clean and not _looks_like_asset(clean):' in src
+    assert 'RedirectResponse(url=f"/{clean}", status_code=301)' in src
+
+
+def test_trailing_slash_redirect_runs_after_retired_routes():
+    """Order matters: /archive/<slug>/ must reach /essays/<slug> in ONE hop.
+
+    If the slash redirect came first it would send /archive/x/ to /archive/x,
+    which then 301s again to /essays/x — a redirect chain, and chains dilute
+    the link equity the legacy alias exists to preserve.
+    """
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    retired = src.index("target = _redirect_target(clean)")
+    slash = src.index('if path.endswith("/") and clean')
+    assert retired < slash, "retired-route redirects must be evaluated first"
+
+
+def test_homepage_is_exempt_from_the_slash_redirect():
+    """"/" strips to "", which is falsy — the guard must keep it a 200.
+
+    Without the `and clean` check the homepage would 301 to "/" forever.
+    """
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    guard = src[src.index('if path.endswith("/") and clean') :][:120]
+    assert "and clean" in guard

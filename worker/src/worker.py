@@ -907,6 +907,27 @@ async def static_assets(path: str, request: Request):
     if target is not None:
         return RedirectResponse(url=target, status_code=301)
 
+    # 1b. Collapse trailing slashes onto the canonical, slash-less URL.
+    #
+    #     `clean` is stripped above, so /essays/x/ and /essays/x already
+    #     RENDER identically — but both returned 200, which made them two URLs
+    #     to Google. The canonical tag pointed at the bare form, so this never
+    #     caused duplicate indexing; it wasted crawl budget instead. GSC
+    #     confirmed the waste is real, not theoretical: the slash variants were
+    #     being crawled AND earning their own impressions
+    #     (trader-joes-panic…/ 4, will-this-matter…/ 6, whos-the-clown/ 1,
+    #     the-grief-soundtrack/ 1, on-art/ 1), and several essays listed a
+    #     /slug/ self-referrer as their ONLY referring URL.
+    #
+    #     That matters here specifically because crawl budget is the binding
+    #     constraint: 10 of 76 essays sit unindexed with Google declining to
+    #     crawl them, while it re-fetches duplicates of pages it already has.
+    #
+    #     Excludes "" (the homepage, whose stripped form is empty) and asset
+    #     paths, which never carry a trailing slash anyway.
+    if path.endswith("/") and clean and not _looks_like_asset(clean):
+        return RedirectResponse(url=f"/{clean}", status_code=301)
+
     resp = await request_env.ASSETS.fetch(f"https://assets.local/{path}")
     body = await resp.bytes()
 
