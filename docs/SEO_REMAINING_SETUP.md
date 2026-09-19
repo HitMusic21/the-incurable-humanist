@@ -234,3 +234,49 @@ largest factor in whether theincurablehumanist.com ranks for Denise's own work.
   unsized, shifting element is gone) but not by a fresh Lighthouse run; the
   PageSpeed Insights daily quota was exhausted. Re-run on an essay page and
   confirm CLS is under 0.1.
+
+---
+
+## Cron scheduler suspended — check this first (2026-09-19)
+
+**Symptom.** No scheduled invocation since 17:05 UTC, including the hourly
+`0 * * * *`. The Worker itself is healthy: the site, the API and all 76 essays
+return 200, and a manual sync completes in ~2s.
+
+**Cause.** The scheduled handler was killed with `exceededCpu` (2,010ms) on
+repeated runs, and Cloudflare stopped invoking it. Both underlying bugs are now
+fixed and deployed:
+
+1. `scheduled()` read `env` from a parameter the runtime never passes, so it
+   died on its first line for weeks (commit c0c813c).
+2. Once it actually ran, per-entry D1 lookups plus feed parsing exceeded the
+   2,000ms scheduled-invocation CPU budget (commit 6e86502).
+
+**How to check whether it recovered.** Poll the health endpoint; `last_run`
+turns over once a cron executes:
+
+```bash
+curl -s https://theincurablehumanist.com/api/sync-health | python3 -m json.tool
+```
+
+`last_run.ran_at` newer than `2026-09-19T17:50:55Z` (the manual verification
+run) means crons are firing again. `last_run.ok` is the field to monitor
+generally — it reports pipeline health within an hour, whereas `stale` only
+notices after ten days of no new content.
+
+**If it has not recovered within a few hours**, a fresh `pywrangler deploy`
+re-registers the triggers and is the documented nudge. Failing that, the
+Cloudflare dashboard (Workers → tih-api → Settings → Triggers) shows the
+schedule state directly.
+
+**Manual sync in the meantime.** The HTTP endpoint runs the identical code and
+has a far larger CPU budget:
+
+```bash
+curl -X POST https://theincurablehumanist.com/api/stories/sync \
+  -H "X-Scheduler-Token: $SCHEDULER_TOKEN"
+```
+
+Note `SCHEDULER_TOKEN` was rotated on 2026-09-19 to run that verification; the
+current value is in the Worker's secrets (`wrangler secret list` shows it
+exists, not its value). Nothing else consumes this token.
