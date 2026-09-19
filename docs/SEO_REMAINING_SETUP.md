@@ -22,38 +22,74 @@ You do **not** need to re-verify. Only programmatic access is missing.
 works (PageSpeed, CrUX), but Search Console, Indexing API and GA4 are all
 unauthenticated.
 
-### Steps
+### Status as of 2026-09-19 — steps 1-6 are DONE, one permission is missing
 
-1. **Google Cloud Console** → create or pick a project.
-2. **APIs & Services → Library** → enable **Google Search Console API**
-   (and **Google Analytics Data API** if you want GA4 traffic too).
-3. **APIs & Services → Credentials → Create credentials → Service account.**
-   Name it anything; no project role is required.
-4. On the new service account → **Keys → Add key → Create new key → JSON**.
-   Save it somewhere private, e.g. `~/.config/claude-seo/gsc-service-account.json`.
-   Do **not** commit it.
-5. Copy the service account's email (looks like
-   `name@project-id.iam.gserviceaccount.com`).
-6. **Search Console** → property `theincurablehumanist.com` → **Settings →
-   Users and permissions → Add user** → paste that email → permission
-   **Full** (Restricted also works for read-only reporting).
-7. Point the tooling at the key. The config file already exists with `api_key`
-   and `default_property`; add one field:
+Re-checked from the CLI today. What already exists:
 
-   ```jsonc
-   // ~/.config/claude-seo/google-api.json
-   {
-     "api_key": "<existing — leave as is>",
-     "default_property": "<existing — leave as is>",
-     "service_account_path": "/Users/carlosmescalona/.config/claude-seo/gsc-service-account.json"
-   }
+| Thing | State |
+|---|---|
+| GCP project `savvy-ceiling-474522-r8` | exists |
+| `searchconsole.googleapis.com` | **enabled** |
+| `indexing.googleapis.com` | **enabled** |
+| Service account `tih-gsc-reader@savvy-ceiling-474522-r8.iam.gserviceaccount.com` | **exists**, added to the GSC property with Full permission |
+| Site ownership verification | done (meta tag + DNS TXT) |
+
+So the setup is 90% complete. Two things block the last step, and **both need
+someone other than `admin@hitmusic21.com`**:
+
+1. **No key file, and no permission to create one.** An org policy blocks
+   service-account key creation (that is why this stalled originally).
+2. **No permission to impersonate the service account instead.** Impersonation
+   is the modern, keyless alternative — but it needs
+   `roles/iam.serviceAccountTokenCreator`, and granting it requires
+   `iam.serviceAccounts.setIamPolicy`, which `admin@hitmusic21.com` does not
+   have. Verified today:
+
+   ```
+   ERROR: permission: iam.serviceAccounts.setIamPolicy
+   reason: IAM_PERMISSION_DENIED
    ```
 
-8. Verify: `claude-seo run google_auth.py --check` should move off Tier 0 and
-   show Search Console as `[OK]`.
+**The project owner is `edgarvaldez@hitmusic21.com`.** One of these unblocks it:
 
-Then I can pull indexation status, impressions/clicks per URL, and confirm
-whether the SSR work moved anything.
+- **(preferred, keyless)** Ask them to run:
+  ```bash
+  gcloud iam service-accounts add-iam-policy-binding \
+    tih-gsc-reader@savvy-ceiling-474522-r8.iam.gserviceaccount.com \
+    --member="user:admin@hitmusic21.com" \
+    --role="roles/iam.serviceAccountTokenCreator" \
+    --project=savvy-ceiling-474522-r8
+  ```
+  Then no key file is ever created or stored on disk.
+
+- **(alternative)** Ask them to grant `admin@hitmusic21.com`
+  `roles/iam.serviceAccountAdmin` on that project, and to lift the
+  key-creation org policy — then step 4 below works.
+
+- **(simplest, no GCP at all)** For a one-off look, export the Performance
+  report by hand: **Search Console → Performance → Export → CSV**, and drop the
+  file in the repo. That answers "what is actually ranking" without any API.
+
+Once unblocked, add the credential path:
+
+```jsonc
+// ~/.config/claude-seo/google-api.json
+{
+  "api_key": "<existing — leave as is>",
+  "default_property": "<existing — leave as is>",
+  "service_account_path": "/Users/carlosmescalona/.config/claude-seo/gsc-service-account.json"
+}
+```
+
+Verify with `claude-seo run google_auth.py --check` — Search Console should
+report `[OK]` instead of Tier 0.
+
+**Why it is worth the chase.** Everything else about SEO here is verified
+*output* — crawlers receive the full text, canonicals are right, 148 internal
+links now exist. What is still unknown is the *outcome*: which essays earn
+impressions, which rank, and whether Substack is outranking this site for
+Denise's own work (see "Substack canonicals" below). That question cannot be
+answered from the site itself.
 
 ---
 
@@ -116,6 +152,43 @@ embed.
 ---
 
 ## Also outstanding (no credentials needed, just decisions)
+
+### Substack canonicals — the biggest single ranking factor left
+
+**Verified 2026-09-19.** Every essay exists twice, and both copies claim to be
+the original:
+
+| | canonical tag says |
+|---|---|
+| `theincurablehumanist.com/essays/good-grief` | itself ✅ |
+| `theincurablehumanist.substack.com/p/good-grief` | **itself** ⚠️ |
+
+The text is the same — Substack serves ~3,091 visible chars of "Good Grief"
+including the identical opening line; the on-site copy is 2,608 chars of body
+prose. Checked five posts, all self-canonical on Substack.
+
+Google picks one URL per duplicate. When a very high-authority domain claims
+authorship of identical text, it usually wins — so Denise's essays may be
+earning their search visibility under *Substack's* brand rather than her own
+domain, and the on-site copies risk being filtered as duplicates.
+
+Nothing in this repo can fix it. The site already does everything correctly on
+its side: self-canonical, `index, follow`, full server-rendered text, complete
+Article schema, 148 internal links, all 75 essays in the sitemap. The remaining
+signal lives in Substack's own `<head>`.
+
+**The fix, in Substack:** each post's settings has a canonical URL field. Set it
+to `https://theincurablehumanist.com/essays/<slug>`. That tells Google the
+on-site copy is the original and consolidates ranking signals onto Denise's
+domain. Roughly a minute per post, and it can be set going forward on new ones.
+
+**Caveat — this may be a deliberate choice.** Session notes record it as
+previously "dropped by decision." Keeping Substack canonical is a legitimate
+trade-off if subscriber growth on Substack matters more than domain authority.
+The point is that it should be a *conscious* trade-off: it is the single
+largest factor in whether theincurablehumanist.com ranks for Denise's own work.
+
+### Everything else
 
 - **Essay subheadings** — 7 `<h2>` and 0 `<h3>` across 73 essays. The top
   remaining citability lever. Proposals for the 10 longest essays are drafted

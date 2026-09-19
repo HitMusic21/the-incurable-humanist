@@ -33,6 +33,10 @@
     "run_worker_first": true
   },
   "triggers": {
+    // Hourly. Substack 429s on back-to-back feed reads, so do NOT add a second
+    // schedule: a temporary probe cron added while debugging on 2026-09-19 was
+    // enough to make consecutive runs rate-limit each other. The sync is
+    // idempotent and backs off on 429, so one run an hour is the right cadence.
     "crons": ["0 * * * *"]
   },
   // Without this, Workers Logs are OFF and every print() in the Worker is

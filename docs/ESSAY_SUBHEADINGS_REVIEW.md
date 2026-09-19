@@ -1,5 +1,46 @@
 # Proposed H2 subheadings — review draft
 
+> **Update 2026-09-19 — re-checked against live content. Two corrections:**
+>
+> 1. **`On Ghosting` already has 3 `<h2>` headings.** It is listed below as
+>    needing its labels promoted; that is now stale — it is done. The corpus
+>    stands at **6 of 75 essays with any `<h2>`** (was 7 of 73 when this was
+>    written; the count moved as essays synced).
+>
+> 2. **Eight essays — not three — already contain Denise's own structural
+>    labels** marked up as `<strong>` instead of headings. These are the
+>    highest-value, lowest-risk changes in this document: nothing is written,
+>    invented, or reworded. Her existing labels simply become real headings.
+>
+>    | Essay | Bold labels already present |
+>    |---|---|
+>    | The Incurable Humanist's Guide to Hispanic Heritage | 104 |
+>    | The Incurable Humanist's Holiday Gift Guide | 39 |
+>    | Jagged Little Pill v. ¿Dónde Están los Ladrones? | 14 |
+>    | The Night Hope Returned | 14 |
+>    | Who's the Clown? | 12 |
+>    | On Grief | 11 |
+>    | The Odyssey Through the Lens of Migration | 8 |
+>    | Venezuela Is Still Falling | 5 |
+>
+>    Several are unambiguous section markers already — *Jagged Little Pill*
+>    runs `BACKGROUND` / `FACTS` / `EXHIBIT A` / `EXHIBIT B` / `EXHIBIT C`,
+>    which is a structure begging to be headings. (Not every bold run is a
+>    heading — some are emphasis mid-sentence — so each needs a glance, but
+>    the judgement is "is this a section label?", not "what should it say?")
+>
+> **Where these should be applied — important.** Essays are authored on
+> Substack and synced hourly, so headings belong in the Substack post editor;
+> the sync carries them across on its own.
+>
+> Editing `story.content` directly is *not* immediately destroyed — the sync's
+> change detection hashes normalized **text**, not markup (`content_hash()` in
+> `html_sanitize.py`), so adding `<h2>` tags leaves the hash unchanged and the
+> row is skipped as "no change". But the moment Denise edits that post on
+> Substack, the hash differs, the body is replaced wholesale, and the headings
+> are silently lost. Upstream is the durable place for them.
+
+
 **Nothing here is live.** Every heading below is a *proposal*, written for Denise to approve, edit, or reject one by one. No prose has been changed and none is suggested for change — headings are purely additive, dropped between existing paragraphs.
 
 **Why this exists.** Across 73 essays the corpus has 7 `<h2>` and 0 `<h3>`. The prose reads as continuous argument, which is a deliberate literary choice and reads beautifully. The cost is narrow and specific: AI answer engines (Google AI Overviews, ChatGPT search, Perplexity) extract *passages*, and they extract far more reliably when a passage sits under a descriptive heading that tells them where the idea begins and ends. Without headings they either quote the whole essay or guess at boundaries — usually badly, and usually from the opening paragraph rather than the passage that actually holds the argument.
