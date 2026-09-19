@@ -245,6 +245,34 @@ async function main() {
     });
     check("essay body not justified", bodyStyle.textAlign !== "justify", bodyStyle.textAlign);
     check("essay body not hyphenated", bodyStyle.hyphens !== "auto", bodyStyle.hyphens);
+  }
+
+  // ---- Related essays (internal linking) --------------------------------
+  // Added Sep 2026. Before it, ZERO of the 75 essays linked to another essay,
+  // so every essay was a dead end for readers and an island for crawlers.
+  console.log("\nRELATED ESSAYS");
+  const relRes = await page.goto(`${BASE}/related-essays.json`, { waitUntil: "domcontentloaded" });
+  check("related-essays.json is served", relRes.status() === 200, `got ${relRes.status()}`);
+  const relMap = await relRes.json().catch(() => ({}));
+  check("map covers some essays", Object.keys(relMap).length > 20,
+    `${Object.keys(relMap).length} essays`);
+  // Pick a slug that exists in THIS environment's database, not simply the
+  // first key in the map. related-essays.json is generated from production,
+  // so against a local worker seeded from an older export its newest entries
+  // 404 and the component correctly renders nothing — which looks like a
+  // failure but is stale local data.
+  const liveSlugs = new Set(
+    (await (await fetch(`${BASE}/api/stories?status=published&limit=500`)).json())
+      .stories.map((s) => s.slug)
+  );
+  const withRelated = Object.keys(relMap).find((s) => liveSlugs.has(s));
+  if (withRelated) {
+    await page.goto(`${BASE}/essays/${withRelated}`, { waitUntil: "networkidle" });
+    check("'Keep reading' renders", (await page.locator('h2:text("Keep reading")').count()) === 1);
+    const links = await page.locator('h2:text("Keep reading") ~ div a[href^="/essays/"]').count();
+    check("related links present", links >= 1 && links <= 3, `found ${links}`);
+    check("essay does not link to itself",
+      (await page.locator(`a[href="/essays/${withRelated}"]`).count()) === 0);
   } else {
     check("essay slug resolved from /api/stories", false, "no stories returned");
   }

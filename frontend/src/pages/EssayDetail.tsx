@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import SEO from "@/components/SEO";
 import Card from "@/components/Card";
+import RelatedEssays from "@/components/RelatedEssays";
 import { API_CONFIG, type StoryDetail as StoryDetailData } from "@/config/api";
 import { articleNode, articleGraphForSite, pageTitle } from "@/lib/schema";
 import { formatDate } from "@/lib/date";
@@ -229,10 +230,16 @@ export default function EssayDetail() {
       </article>
 
       {/* The end-of-essay SubscribeCTA ("Read the next one in your inbox.")
-          was removed at Denise's request (Sep 2026). Essay pages now carry no
-          on-site capture; the exit-intent modal and the footer are the
-          remaining surfaces. This div preserves the spacing that section gave
-          the article above it. */}
+          was removed at Denise's request (Sep 2026). Essay pages carry no
+          on-site capture now; the exit-intent modal and the footer are the
+          remaining surfaces.
+
+          RelatedEssays took that slot instead. It is not a replacement CTA —
+          it asks nothing of the reader — it fixes the separate problem that
+          every essay was a dead end, linking to no other essay on the site.
+          It renders nothing (including no spacing) when an essay has no
+          related sibling, so the fallback padding below still applies. */}
+      <RelatedEssays slug={story.slug} />
       <div className="pb-24" />
     </>
   );

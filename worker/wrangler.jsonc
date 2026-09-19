@@ -35,6 +35,19 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
+  // Without this, Workers Logs are OFF and every print() in the Worker is
+  // discarded — including the `except` branch in scheduled(), which catches
+  // sync failures and prints them. That is why the Aug 30 - Sep 14 sync gap
+  // could never be explained: the cron was firing and failing, and the only
+  // record of why was written to a sink.
+  //
+  // head_sampling_rate 1 = keep every invocation. This Worker serves a
+  // personal publication at very low volume, so there is no cost case for
+  // sampling, and sampling the hourly cron would defeat the point.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
   // Custom Domains: the Worker IS the origin, so Cloudflare creates the DNS
   // records and issues the certificate. Requires the zone to be active
   // (nameservers pointing at Cloudflare) — a plain CNAME at the old DNS host

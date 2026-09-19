@@ -309,3 +309,45 @@ def test_press_is_no_longer_a_redirect():
     """
     assert _redirect_target("press") is None
     assert '"press":' not in _WORKER_PY.read_text(encoding="utf-8").split("_REDIRECTS = {")[1].split("}")[0]
+
+
+def test_scheduled_reads_bindings_off_self_not_a_parameter():
+    """The cron handler must use self.env, never an `env` parameter.
+
+    WorkerEntrypoint supplies the environment as an instance attribute; the
+    runtime does not pass it positionally to scheduled(). The original
+    signature `scheduled(self, controller, env, ctx)` therefore bound `env` to
+    the wrong thing and every hourly run died on
+
+        AttributeError: 'NoneType' object has no attribute 'DB'
+
+    for roughly three weeks, silently, because Workers Logs were off.
+    """
+    src = _WORKER_PY.read_text(encoding="utf-8")
+    sig = re.search(r"async def scheduled\(([^)]*)\)", src)
+    assert sig, "scheduled() handler not found"
+    params = [p.strip() for p in sig.group(1).split(",")]
+    assert "env" not in params, (
+        f"scheduled() takes an `env` parameter ({params}) — the runtime does not "
+        "pass one, so it binds to the wrong value. Read self.env instead."
+    )
+    body = src[sig.end() : sig.end() + 1200]
+    assert "self.env" in body, "scheduled() must read bindings off self.env"
+
+
+def test_observability_is_enabled():
+    """Workers Logs must stay on, or cron failures are invisible.
+
+    scheduled() reports failure with print(). With observability disabled that
+    output is discarded, which is why a three-week sync outage produced no
+    signal at all.
+    """
+    import json
+
+    raw = (_WORKER_PY.parent.parent / "wrangler.jsonc").read_text(encoding="utf-8")
+    stripped = re.sub(r"^\s*//.*$", "", raw, flags=re.M)
+    config = json.loads(stripped)
+    assert config.get("observability", {}).get("enabled") is True, (
+        "observability.enabled must be true — without it print() from the cron "
+        "handler goes nowhere and sync failures are silent"
+    )

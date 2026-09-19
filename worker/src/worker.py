@@ -258,7 +258,32 @@ def _inject(html: str, markup: str) -> str:
     return html.replace(_ROOT_DIV, f'<div id="root">{markup}</div>', 1)
 
 
-async def _ssr_essay(db, slug: str) -> str | None:
+async def _related(request_env, slug: str) -> list[dict]:
+    """Related essays for `slug`, from the build-time map in public/.
+
+    Emitted by scripts/generate-related.mjs — same ASSETS-binding pattern as
+    _topics(). The pairings are TF-IDF over the corpus, which is far too
+    expensive to recompute per request for a value that changes at most hourly.
+
+    Returns [] on any failure: the related strip is an enhancement, and an
+    essay must still render without it.
+    """
+    import json
+
+    if request_env is None:
+        return []
+    try:
+        resp = await request_env.ASSETS.fetch("https://assets.local/related-essays.json")
+        if resp.status != 200:
+            return []
+        data = json.loads((await resp.bytes()).decode("utf-8"))
+    except Exception:  # noqa: BLE001 - missing/!JSON asset must not break the essay
+        return []
+    items = data.get(slug)
+    return items if isinstance(items, list) else []
+
+
+async def _ssr_essay(db, slug: str, request_env=None) -> str | None:
     """Server-rendered essay body, or None when the slug is unknown."""
     rows = await _all(
         db.prepare(
@@ -274,12 +299,31 @@ async def _ssr_essay(db, slug: str) -> str | None:
         meta.append(_esc(str(row["published_at"])[:10]))
     if row.get("read_time_minutes"):
         meta.append(f"{row['read_time_minutes']} min read")
+
+    # Related-essay links, server-side. The React component renders these too,
+    # but a crawler that does not execute JS (GPTBot, ClaudeBot, PerplexityBot)
+    # would otherwise see an essay with no outbound link to any other essay —
+    # which was the state of all 75 essays before Sep 2026, and the entire
+    # reason the internal link graph was empty.
+    related = await _related(request_env, slug)
+    related_html = ""
+    if related:
+        links = "".join(
+            f'<li><a href="/essays/{_esc(str(r.get("slug", "")))}">'
+            f'{_esc(str(r.get("title", "")))}</a></li>'
+            for r in related
+            if r.get("slug")
+        )
+        if links:
+            related_html = f"<nav><h2>Keep reading</h2><ul>{links}</ul></nav>"
+
     return (
         f"<article><h1>{_esc(row['title'])}</h1>"
         + (f"<p>{' · '.join(meta)}</p>" if meta else "")
         + (f"<p>{_esc(row.get('excerpt') or '')}</p>" if row.get("excerpt") else "")
         # Not escaped: sanitized at ingest. Escaping would show raw tags.
         + f"<div>{row.get('content') or ''}</div></article>"
+        + related_html
     )
 
 
@@ -511,7 +555,7 @@ async def _render_markup(request_env, clean: str) -> str | None:
     single dispatch point makes the next addition obvious.
     """
     if clean.startswith("essays/") and clean.count("/") == 1:
-        return await _ssr_essay(request_env.DB, clean.split("/", 1)[1])
+        return await _ssr_essay(request_env.DB, clean.split("/", 1)[1], request_env)
     if clean == "archive":
         return await _ssr_archive(request_env.DB)
     if clean == "speak":
@@ -827,9 +871,29 @@ class Default(_asgi_entrypoint):
     invokes `scheduled()` directly, so there is no request to authenticate.
     """
 
-    async def scheduled(self, controller, env, ctx):
+    async def scheduled(self, controller, *args):
+        """Hourly Substack sync.
+
+        Reads the bindings off `self.env`, NOT off a parameter. This signature
+        was `scheduled(self, controller, env, ctx)` from the migration until
+        Sep 2026, which silently broke every run: WorkerEntrypoint supplies the
+        environment as an INSTANCE attribute (see workers/entrypoints.py — its
+        __init__ takes (ctx, env) and _wrap_class wraps env there). The runtime
+        does not pass env positionally to scheduled(), so that `env` parameter
+        bound to whatever came next and `env.DB` raised
+
+            AttributeError: 'NoneType' object has no attribute 'DB'
+
+        instantly, every hour, for weeks. Nothing surfaced it because the
+        `except` below print()s and Workers Logs were not enabled — see the
+        `observability` block in wrangler.jsonc, which must stay on.
+
+        *args absorbs whatever arity the runtime uses so a future SDK change
+        cannot reintroduce the same silent mis-binding.
+        """
         try:
-            result = await _run_sync(env.DB, env)
+            env_binding = self.env
+            result = await _run_sync(env_binding.DB, env_binding)
             print(f"substack sync: {result}")
         except Exception as exc:  # noqa: BLE001 - never let cron raise unhandled
             print(f"substack sync FAILED: {type(exc).__name__}: {exc}")
