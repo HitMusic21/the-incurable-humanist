@@ -167,7 +167,10 @@ function renderHead({ title, description, canonical, ogImage, jsonLd, noindex, o
     parts.push(`<meta name="twitter:image" content="${escapeHtml(ogImage)}" />`);
   }
   parts.push(
-    `<meta name="robots" content="${noindex ? "noindex, nofollow" : "index, follow"}" />`
+    // Mirrors SEO.tsx. max-image-preview:large is what makes a page eligible
+    // for a full-width Google Discover card; without it Discover is
+    // effectively closed off, since it is an image-led surface.
+    `<meta name="robots" content="${noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"}" />`
   );
   if (preloadImage) {
     // Route-scoped LCP preload. The <img> lives inside the React tree, so

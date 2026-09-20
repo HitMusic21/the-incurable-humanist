@@ -58,7 +58,17 @@ export default function SEO({
     setMeta("twitter:image", ogImage, true);
 
     // Robots
-    setMeta("robots", noindex ? "noindex, nofollow" : "index, follow");
+    // max-image-preview:large is REQUIRED for Google Discover. Without it
+    // Google may only show a thumbnail, and Discover is an image-led surface —
+    // a small preview effectively means no Discover placement at all. The
+    // snippet/video directives are set explicitly for the same reason: leaving
+    // them unset lets Google choose conservatively.
+    setMeta(
+      "robots",
+      noindex
+        ? "noindex, nofollow"
+        : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    );
 
     // JSON-LD @graph
     let script = document.getElementById(JSONLD_ID) as HTMLScriptElement | null;
