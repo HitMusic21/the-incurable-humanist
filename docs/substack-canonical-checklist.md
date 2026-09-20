@@ -1,5 +1,29 @@
 # Substack canonical URL checklist
 
+> **⚠️ Update 2026-09-20 — this is now OPTIONAL, not urgent.**
+>
+> The concern behind this doc was that Substack's copy of each essay would
+> outrank ours, because both copies self-canonicalise. **Google Search Console
+> shows that is not happening.** URL inspection across the indexed corpus
+> returns, on every essay:
+>
+> ```
+> googleCanonical: https://theincurablehumanist.com/essays/<slug>
+> userCanonical:   https://theincurablehumanist.com/essays/<slug>
+> ```
+>
+> Google picks **our** URL every time. 66 of 76 essays are indexed with zero
+> canonical mismatches.
+>
+> So the duplicate-content risk is real in theory and **unrealised in
+> practice**. Doing the work below would still strengthen the signal, but it is
+> no longer fixing a live problem — and at ~1 minute per post for 73 posts it
+> is a poor use of Denise's time relative to the distribution work in
+> `ICP_AND_GROWTH_ANALYSIS.md`.
+>
+> Worth doing **for new posts going forward** if Substack offers a site-wide
+> default. Retrofitting all 73 is optional.
+
 Set each Substack post's canonical URL to the theincurablehumanist.com
 equivalent. This consolidates SEO authority on the owned domain while
 keeping Substack subscriber growth intact.

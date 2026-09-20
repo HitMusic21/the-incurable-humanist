@@ -7,7 +7,28 @@ Ordered by value, not effort.
 
 ---
 
-## 1. Google Search Console API — highest value
+## 1. Google Search Console API — ✅ RESOLVED 2026-09-20
+
+> **This is done.** Not via GCP — the whole IAM/org-policy tangle below was
+> sidestepped. GSC is now reachable through the **OpenSEO MCP server**
+> (`http://localhost:3002/mcp`), where the project `theincurablehumanist.com`
+> is connected to the Search Console property.
+>
+> Tools available and verified working: `get_search_console_performance`
+> (queries, pages, countries, devices, dates) and `inspect_urls` (index status,
+> coverage state, Google-selected canonical). Read-only, no credits.
+>
+> **One gotcha worth recording:** the OpenSEO Docker container had been
+> `unhealthy` for six days and was failing every request in a loop. A
+> `docker restart openseo-open-seo-1` fixed it. If OpenSEO tools start
+> returning `TypeError: fetch failed`, check the container first.
+>
+> The GCP path below is kept for reference only. It remains blocked, and no
+> longer needs unblocking.
+
+---
+
+## 1b. Google Search Console API via GCP — reference only, still blocked
 
 **Why it matters.** This is the audit's largest remaining blind spot. Right now I
 can tell you what crawlers *receive* but not what Google has actually *indexed*
